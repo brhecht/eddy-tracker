@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useFirestoreState } from "./useFirestoreState";
 
 /* ── Static Data ────────────────────────────────────────────────── */
@@ -224,6 +224,69 @@ export default function EddyTracker() {
   const [assigns, setAssigns] = useFirestoreState("assigns", initAssigns());
   const [tStat, setTStat] = useFirestoreState("tStat", initToolStatus());
   const [sel, setSel] = useFirestoreState("sel", {});
+  const [positions, setPositions] = useFirestoreState("positions", {});
+
+  // Drag state (local only, not persisted until drop)
+  const dragRef = useRef(null);
+  const [dragPreview, setDragPreview] = useState(null); // { taskId, s, e }
+
+  const getTaskPos = useCallback((t) => {
+    if (dragPreview && dragPreview.taskId === t.id) return { s: dragPreview.s, e: dragPreview.e };
+    if (positions[t.id]) return { s: positions[t.id].s, e: positions[t.id].e };
+    return { s: t.s, e: t.e };
+  }, [positions, dragPreview]);
+
+  const handleDragStart = useCallback((taskId, defaultS, defaultE, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const pos = positions[taskId] || { s: defaultS, e: defaultE };
+    const duration = pos.e - pos.s;
+    // Find the width of one week cell
+    const gridEl = e.currentTarget.closest('[data-gantt-row]');
+    if (!gridEl) return;
+    const cells = gridEl.querySelectorAll('[data-week-cell]');
+    if (!cells.length) return;
+    const cellWidth = cells[0].getBoundingClientRect().width;
+
+    dragRef.current = { taskId, startX, origS: pos.s, origE: pos.e, duration, cellWidth };
+
+    const onMove = (ev) => {
+      const dr = dragRef.current;
+      if (!dr) return;
+      const dx = ev.clientX - dr.startX;
+      const weekShift = Math.round(dx / dr.cellWidth);
+      let newS = dr.origS + weekShift;
+      let newE = newS + dr.duration;
+      // Clamp to week boundaries
+      if (newS < 1) { newS = 1; newE = 1 + dr.duration; }
+      if (newE > W.length) { newE = W.length; newS = W.length - dr.duration; }
+      setDragPreview({ taskId: dr.taskId, s: newS, e: newE });
+    };
+
+    const onUp = () => {
+      const dr = dragRef.current;
+      if (dr) {
+        // Commit the position to Firestore
+        const dx = 0; // recalculate final
+        setDragPreview((prev) => {
+          if (prev && prev.taskId === dr.taskId) {
+            setPositions((p) => ({
+              ...p,
+              [dr.taskId]: { s: prev.s, e: prev.e, weekOf: W.find((w) => w.id === prev.s)?.d || "" },
+            }));
+          }
+          return null;
+        });
+      }
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, [positions, setPositions]);
 
   const tog = useCallback((id) => setDone((p) => ({ ...p, [id]: !p[id] })), [setDone]);
 
@@ -297,7 +360,7 @@ export default function EddyTracker() {
       {tab === "gantt" && (
         <div style={{ overflowX: "auto" }}>
           <div style={{ fontSize: 10, color: "#bbb", marginBottom: 8 }}>
-            Click bars to assign: <span style={{ color: "#4f46e5", fontWeight: 600 }}>Brian</span> → <span style={{ color: "#0d9488", fontWeight: 600 }}>Nico</span> → <span style={{ color: "#d97706", fontWeight: 600 }}>Both</span> → blank
+            Click bars to assign: <span style={{ color: "#4f46e5", fontWeight: 600 }}>Brian</span> → <span style={{ color: "#0d9488", fontWeight: 600 }}>Nico</span> → <span style={{ color: "#d97706", fontWeight: 600 }}>Both</span> → blank · Drag bars to reschedule
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "200px repeat(7,1fr)", marginBottom: 4 }}>
             <div />
@@ -323,10 +386,13 @@ export default function EddyTracker() {
               </div>
               {ws.tasks.map((t) => {
                 const d = done[t.id], op = openTask === t.id, asgn = assigns[t.id] || "";
+                const pos = getTaskPos(t);
+                const isDragging = dragPreview && dragPreview.taskId === t.id;
                 return (
                   <div key={t.id}>
                     <div
-                      onClick={() => setOpenTask(op ? null : t.id)}
+                      data-gantt-row
+                      onClick={() => { if (!isDragging) setOpenTask(op ? null : t.id); }}
                       style={{
                         display: "grid", gridTemplateColumns: "200px repeat(7,1fr)",
                         cursor: "pointer", background: op ? "#fff" : "transparent",
@@ -342,23 +408,25 @@ export default function EddyTracker() {
                         <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0, fontWeight: 500 }}>{t.hr}h</span>
                       </div>
                       {W.map((w) => {
-                        const inR = w.id >= t.s && w.id <= t.e, isS = w.id === t.s, isE = w.id === t.e;
+                        const inR = w.id >= pos.s && w.id <= pos.e, isS = w.id === pos.s, isE = w.id === pos.e;
                         const barColor = asgn ? ASSIGN_COLORS[asgn] : ws.color;
                         return (
-                          <div key={w.id} style={{ borderLeft: "1px solid #f0eee9", padding: "4px 3px", display: "flex", alignItems: "center" }}>
+                          <div key={w.id} data-week-cell style={{ borderLeft: "1px solid #f0eee9", padding: "4px 3px", display: "flex", alignItems: "center" }}>
                             {inR && (
                               <div
                                 onClick={(e) => cycleAssign(t.id, e)}
-                                title="Click to change assignee"
+                                onMouseDown={(e) => handleDragStart(t.id, t.s, t.e, e)}
+                                title="Click to assign · Drag to reschedule"
                                 style={{
-                                  height: 22, width: "100%", cursor: "pointer",
-                                  background: d ? "#e8e6e1" : `${barColor}18`,
+                                  height: 22, width: "100%", cursor: isDragging ? "grabbing" : "grab",
+                                  background: d ? "#e8e6e1" : isDragging ? `${barColor}30` : `${barColor}18`,
                                   border: `1.5px solid ${d ? "#ccc" : barColor + "55"}`,
                                   borderRadius: isS && isE ? 5 : isS ? "5px 0 0 5px" : isE ? "0 5px 5px 0" : 0,
                                   borderRight: isE ? undefined : "none",
                                   borderLeft: isS ? undefined : "none",
                                   display: "flex", alignItems: "center", justifyContent: isS ? "flex-start" : "center",
-                                  paddingLeft: isS ? 4 : 0, transition: "all 0.15s",
+                                  paddingLeft: isS ? 4 : 0, transition: isDragging ? "none" : "all 0.15s",
+                                  userSelect: "none",
                                 }}
                               >
                                 {isS && asgn && <AssignBadge value={asgn} />}
