@@ -236,39 +236,83 @@ export default function EddyTracker() {
     return { s: t.s, e: t.e };
   }, [positions, dragPreview]);
 
-  const handleDragStart = useCallback((taskId, defaultS, defaultE, e) => {
+  // Unified drag handler: mode = "move" | "resize-left" | "resize-right"
+  const handleBarMouseDown = useCallback((taskId, wsId, defaultS, defaultE, mode, e) => {
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
     const pos = positions[taskId] || { s: defaultS, e: defaultE };
     const duration = pos.e - pos.s;
-    // Find the width of one week cell
     const gridEl = e.currentTarget.closest('[data-gantt-row]');
     if (!gridEl) return;
     const cells = gridEl.querySelectorAll('[data-week-cell]');
     if (!cells.length) return;
     const cellWidth = cells[0].getBoundingClientRect().width;
 
-    dragRef.current = { taskId, startX, origS: pos.s, origE: pos.e, duration, cellWidth };
+    // Precompute sibling occupied weeks
+    const ws = WS.find((w) => w.id === wsId);
+    const siblingOccupied = new Set();
+    if (ws) {
+      ws.tasks.forEach((t) => {
+        if (t.id === taskId) return;
+        const p = positions[t.id] || { s: t.s, e: t.e };
+        for (let w = p.s; w <= p.e; w++) siblingOccupied.add(w);
+      });
+    }
+
+    dragRef.current = { taskId, startX, origS: pos.s, origE: pos.e, duration, cellWidth, mode, siblingOccupied };
 
     const onMove = (ev) => {
       const dr = dragRef.current;
       if (!dr) return;
       const dx = ev.clientX - dr.startX;
       const weekShift = Math.round(dx / dr.cellWidth);
-      let newS = dr.origS + weekShift;
-      let newE = newS + dr.duration;
-      // Clamp to week boundaries
-      if (newS < 1) { newS = 1; newE = 1 + dr.duration; }
-      if (newE > W.length) { newE = W.length; newS = W.length - dr.duration; }
+      let newS, newE;
+
+      if (dr.mode === "move") {
+        newS = dr.origS + weekShift;
+        newE = newS + dr.duration;
+        // Clamp to grid
+        if (newS < 1) { newS = 1; newE = 1 + dr.duration; }
+        if (newE > W.length) { newE = W.length; newS = W.length - dr.duration; }
+        // Check collision — if any week in [newS..newE] is occupied, revert to last valid
+        let blocked = false;
+        for (let w = newS; w <= newE; w++) {
+          if (dr.siblingOccupied.has(w)) { blocked = true; break; }
+        }
+        if (blocked) return; // Don't update preview
+      } else if (dr.mode === "resize-left") {
+        newS = dr.origS + weekShift;
+        newE = dr.origE;
+        // Clamp: can't go below 1, can't pass end
+        if (newS < 1) newS = 1;
+        if (newS > newE) newS = newE;
+        // Check collision on expanded weeks
+        let blocked = false;
+        for (let w = newS; w < dr.origS; w++) {
+          if (dr.siblingOccupied.has(w)) { blocked = true; break; }
+        }
+        if (blocked) return;
+      } else if (dr.mode === "resize-right") {
+        newS = dr.origS;
+        newE = dr.origE + weekShift;
+        // Clamp: can't exceed grid, can't pass start
+        if (newE > W.length) newE = W.length;
+        if (newE < newS) newE = newS;
+        // Check collision on expanded weeks
+        let blocked = false;
+        for (let w = dr.origE + 1; w <= newE; w++) {
+          if (dr.siblingOccupied.has(w)) { blocked = true; break; }
+        }
+        if (blocked) return;
+      }
+
       setDragPreview({ taskId: dr.taskId, s: newS, e: newE });
     };
 
     const onUp = () => {
       const dr = dragRef.current;
       if (dr) {
-        // Commit the position to Firestore
-        const dx = 0; // recalculate final
         setDragPreview((prev) => {
           if (prev && prev.taskId === dr.taskId) {
             setPositions((p) => ({
@@ -360,7 +404,7 @@ export default function EddyTracker() {
       {tab === "gantt" && (
         <div style={{ overflowX: "auto" }}>
           <div style={{ fontSize: 10, color: "#bbb", marginBottom: 8 }}>
-            Click bars to assign: <span style={{ color: "#4f46e5", fontWeight: 600 }}>Brian</span> → <span style={{ color: "#0d9488", fontWeight: 600 }}>Nico</span> → <span style={{ color: "#d97706", fontWeight: 600 }}>Both</span> → blank · Drag bars to reschedule
+            Click bars to assign: <span style={{ color: "#4f46e5", fontWeight: 600 }}>Brian</span> → <span style={{ color: "#0d9488", fontWeight: 600 }}>Nico</span> → <span style={{ color: "#d97706", fontWeight: 600 }}>Both</span> → blank · Drag to move · Drag edges to resize
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "200px repeat(7,1fr)", marginBottom: 4 }}>
             <div />
@@ -415,8 +459,8 @@ export default function EddyTracker() {
                             {inR && (
                               <div
                                 onClick={(e) => cycleAssign(t.id, e)}
-                                onMouseDown={(e) => handleDragStart(t.id, t.s, t.e, e)}
-                                title="Click to assign · Drag to reschedule"
+                                onMouseDown={(e) => handleBarMouseDown(t.id, ws.id, t.s, t.e, "move", e)}
+                                title="Click to assign · Drag to move"
                                 style={{
                                   height: 22, width: "100%", cursor: isDragging ? "grabbing" : "grab",
                                   background: d ? "#e8e6e1" : isDragging ? `${barColor}30` : `${barColor}18`,
@@ -426,9 +470,33 @@ export default function EddyTracker() {
                                   borderLeft: isS ? undefined : "none",
                                   display: "flex", alignItems: "center", justifyContent: isS ? "flex-start" : "center",
                                   paddingLeft: isS ? 4 : 0, transition: isDragging ? "none" : "all 0.15s",
-                                  userSelect: "none",
+                                  userSelect: "none", position: "relative",
                                 }}
                               >
+                                {/* Left resize handle */}
+                                {isS && (
+                                  <div
+                                    onMouseDown={(e) => { e.stopPropagation(); handleBarMouseDown(t.id, ws.id, t.s, t.e, "resize-left", e); }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      position: "absolute", left: 0, top: 0, bottom: 0, width: 6,
+                                      cursor: "ew-resize", borderRadius: "5px 0 0 5px", zIndex: 2,
+                                    }}
+                                    title="Drag to resize"
+                                  />
+                                )}
+                                {/* Right resize handle */}
+                                {isE && (
+                                  <div
+                                    onMouseDown={(e) => { e.stopPropagation(); handleBarMouseDown(t.id, ws.id, t.s, t.e, "resize-right", e); }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      position: "absolute", right: 0, top: 0, bottom: 0, width: 6,
+                                      cursor: "ew-resize", borderRadius: "0 5px 5px 0", zIndex: 2,
+                                    }}
+                                    title="Drag to resize"
+                                  />
+                                )}
                                 {isS && asgn && <AssignBadge value={asgn} />}
                               </div>
                             )}
