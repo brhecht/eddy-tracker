@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useFirestoreState } from "./useFirestoreState";
+import { uploadFile } from "./firebase";
 
 /* ── Static Data ────────────────────────────────────────────────── */
 
@@ -212,6 +213,71 @@ function AssignBadge({ value }) {
   );
 }
 
+function AssetInput({ onValue }) {
+  const [mode, setMode] = useState("link");
+  const [url, setUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
+
+  const handlePaste = () => {
+    if (url.trim()) { onValue(url.trim()); setUrl(""); }
+  };
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const result = await uploadFile(file);
+      onValue(result);
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div style={{ border: "1px dashed #d4d3cf", borderRadius: 4, padding: "4px 6px" }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 4 }}>
+        {["link", "upload"].map((m) => (
+          <button key={m} onClick={() => setMode(m)} style={{
+            fontSize: 9, padding: "2px 8px", background: mode === m ? "#f0eee9" : "transparent",
+            border: "none", borderRadius: 3, color: mode === m ? "#333" : "#aaa",
+            cursor: "pointer", fontWeight: mode === m ? 600 : 400, textTransform: "capitalize",
+          }}>{m}</button>
+        ))}
+      </div>
+      {mode === "link" ? (
+        <div style={{ display: "flex", gap: 4 }}>
+          <input
+            value={url} onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handlePaste(); }}
+            placeholder="Paste URL…"
+            style={{ flex: 1, fontSize: 10, border: "1px solid #e8e6e1", borderRadius: 3, padding: "3px 5px", outline: "none", fontFamily: "inherit" }}
+          />
+          <button onClick={handlePaste} style={{
+            fontSize: 9, padding: "3px 8px", background: "#f0eee9", border: "1px solid #e0ded8",
+            borderRadius: 3, cursor: "pointer", color: "#666",
+          }}>Add</button>
+        </div>
+      ) : (
+        <>
+          <input ref={fileRef} type="file" hidden onChange={handleUpload} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            style={{
+              width: "100%", fontSize: 10, padding: "4px 0", background: "transparent",
+              border: "none", color: uploading ? "#bbb" : "#4f46e5", cursor: uploading ? "wait" : "pointer",
+              fontFamily: "inherit",
+            }}
+          >{uploading ? "Uploading…" : "Choose file…"}</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ── Main Component ──────────────────────────────────────────────── */
 
 export default function EddyTracker() {
@@ -227,9 +293,12 @@ export default function EddyTracker() {
   const [positions, setPositions] = useFirestoreState("positions", {});
   const [customTasks, setCustomTasks] = useFirestoreState("customTasks", {}); // { wsId: [task, ...] }
   const [taskOrder, setTaskOrder] = useFirestoreState("taskOrder", {}); // { wsId: [id, id, ...] }
+  const [taskProps, setTaskProps] = useFirestoreState("taskProps", {}); // { taskId: { startDate, endDate, assets, notes } }
 
   // Editing state for inline new-task name
   const [editingTask, setEditingTask] = useState(null); // taskId currently being renamed
+  // Card panel state
+  const [cardOpen, setCardOpen] = useState(null); // { taskId, wsId }
 
   // Drag state (local only, not persisted until drop)
   const dragRef = useRef(null);
@@ -392,6 +461,45 @@ export default function EddyTracker() {
     }));
   }, [setCustomTasks]);
 
+  // Update task properties (card fields)
+  const updateTaskProp = useCallback((taskId, updates) => {
+    setTaskProps((prev) => ({
+      ...prev,
+      [taskId]: { ...(prev[taskId] || {}), ...updates },
+    }));
+  }, [setTaskProps]);
+
+  // Get props for a task (merged with defaults)
+  const getTaskPropsMerged = useCallback((taskId) => {
+    const defaults = { startDate: "", endDate: "", assets: [null, null, null], notes: "" };
+    return { ...defaults, ...(taskProps[taskId] || {}) };
+  }, [taskProps]);
+
+  // Compute available weeks for a task (current + unoccupied by siblings)
+  const getAvailableWeeks = useCallback((taskId, wsId) => {
+    const ws = WS.find((w) => w.id === wsId);
+    if (!ws) return W.map((w) => w.id);
+    const allTasks = [...ws.tasks, ...(customTasks[wsId] || [])];
+    const occupied = new Set();
+    allTasks.forEach((t) => {
+      if (t.id === taskId) return;
+      const p = positions[t.id] || { s: t.s, e: t.e };
+      for (let w = p.s; w <= p.e; w++) occupied.add(w);
+    });
+    return W.map((w) => w.id).filter((wId) => !occupied.has(wId));
+  }, [positions, customTasks]);
+
+  // Move task to a new single-week position from card dropdown
+  const moveTaskToWeek = useCallback((taskId, wsId, newWeek) => {
+    const available = getAvailableWeeks(taskId, wsId);
+    if (!available.includes(newWeek)) return false;
+    setPositions((p) => ({
+      ...p,
+      [taskId]: { s: newWeek, e: newWeek, weekOf: W.find((w) => w.id === newWeek)?.d || "" },
+    }));
+    return true;
+  }, [getAvailableWeeks, setPositions]);
+
   // Delete a custom task
   const deleteCustomTask = useCallback((wsId, taskId) => {
     setCustomTasks((prev) => ({
@@ -406,7 +514,9 @@ export default function EddyTracker() {
     setDone((p) => { const n = { ...p }; delete n[taskId]; return n; });
     setAssigns((p) => { const n = { ...p }; delete n[taskId]; return n; });
     setPositions((p) => { const n = { ...p }; delete n[taskId]; return n; });
-  }, [setCustomTasks, setTaskOrder, setDone, setAssigns, setPositions]);
+    setTaskProps((p) => { const n = { ...p }; delete n[taskId]; return n; });
+    if (cardOpen && cardOpen.taskId === taskId) setCardOpen(null);
+  }, [setCustomTasks, setTaskOrder, setDone, setAssigns, setPositions, setTaskProps, cardOpen]);
 
   // Reorder tasks within a workstream via drag
   const reorderDragRef = useRef(null);
@@ -470,6 +580,28 @@ export default function EddyTracker() {
 
   const isCl = (s) => s && s.includes("⚡");
 
+  // Find task object by id across all workstreams
+  const findTask = useCallback((taskId, wsId) => {
+    const ws = WS.find((w) => w.id === wsId);
+    if (!ws) return null;
+    const inStatic = ws.tasks.find((t) => t.id === taskId);
+    if (inStatic) return inStatic;
+    return (customTasks[wsId] || []).find((t) => t.id === taskId) || null;
+  }, [customTasks]);
+
+  // Asset field helper — get url/name from value
+  const getAssetUrl = (val) => (typeof val === "object" && val?.url ? val.url : val);
+  const getAssetName = (val) => {
+    if (typeof val === "object" && val?.name) return val.name;
+    const url = typeof val === "string" ? val : "";
+    try { const u = new URL(url); const parts = u.pathname.split("/").filter(Boolean); return decodeURIComponent(parts[parts.length - 1] || u.hostname); } catch { return url; }
+  };
+  const triggerAssetDownload = (val) => {
+    const url = getAssetUrl(val); const name = getAssetName(val);
+    const a = document.createElement("a"); a.href = url; a.download = name; a.target = "_blank"; a.rel = "noopener noreferrer";
+    document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 100);
+  };
+
   return (
     <div style={{ fontFamily: "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif", background: "#f8f7f4", color: "#1a1a1a", minHeight: "100vh", padding: "24px 28px" }}>
 
@@ -511,9 +643,10 @@ export default function EddyTracker() {
 
       {/* ── Timeline Tab ────────────────────────────────── */}
       {tab === "gantt" && (
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ display: "flex", gap: 0 }}>
+        <div style={{ overflowX: "auto", flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, color: "#bbb", marginBottom: 8 }}>
-            Click bars to assign: <span style={{ color: "#4f46e5", fontWeight: 600 }}>Brian</span> → <span style={{ color: "#0d9488", fontWeight: 600 }}>Nico</span> → <span style={{ color: "#d97706", fontWeight: 600 }}>Both</span> → blank · Drag to move · Drag edges to resize
+            Click bars to open properties · Drag to move · Drag edges to resize
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "200px repeat(7,1fr)", marginBottom: 4 }}>
             <div />
@@ -622,9 +755,9 @@ export default function EddyTracker() {
                           <div key={w.id} data-week-cell style={{ borderLeft: "1px solid #f0eee9", padding: "4px 3px", display: "flex", alignItems: "center" }}>
                             {inR && (
                               <div
-                                onClick={(e) => cycleAssign(t.id, e)}
+                                onClick={(e) => { e.stopPropagation(); setCardOpen(cardOpen && cardOpen.taskId === t.id ? null : { taskId: t.id, wsId: ws.id }); }}
                                 onMouseDown={(e) => handleBarMouseDown(t.id, ws.id, t.s, t.e, "move", e)}
-                                title="Click to assign · Drag to move"
+                                title="Click to open properties · Drag to move"
                                 style={{
                                   height: 22, width: "100%", cursor: isDragging ? "grabbing" : "grab",
                                   background: d ? "#e8e6e1" : isDragging ? `${barColor}30` : `${barColor}18`,
@@ -731,6 +864,192 @@ export default function EddyTracker() {
             </div>
             );
           })}
+        </div>
+        {/* ── Task Card Panel ──────────────────────────── */}
+        {cardOpen && (() => {
+          const ct = findTask(cardOpen.taskId, cardOpen.wsId);
+          if (!ct) return null;
+          const pos = getTaskPos(ct);
+          const asgn = assigns[cardOpen.taskId] || "";
+          const props = getTaskPropsMerged(cardOpen.taskId);
+          const availWeeks = getAvailableWeeks(cardOpen.taskId, cardOpen.wsId);
+          const ws = WS.find((w) => w.id === cardOpen.wsId);
+          const wsColor = ws ? ws.color : "#666";
+
+          return (
+            <div style={{
+              width: 320, flexShrink: 0, background: "#fff", borderLeft: "1px solid #e8e6e1",
+              borderRadius: "0 8px 8px 0", boxShadow: "-2px 0 12px rgba(0,0,0,0.06)",
+              padding: "20px 18px", overflowY: "auto", maxHeight: "calc(100vh - 120px)",
+              position: "sticky", top: 0,
+            }}>
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: wsColor, marginBottom: 4 }}>{ws?.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{ct.name}</div>
+                </div>
+                <button onClick={() => setCardOpen(null)} style={{
+                  background: "transparent", border: "none", fontSize: 18, color: "#bbb", cursor: "pointer",
+                  padding: "0 4px", lineHeight: 1,
+                }} onMouseEnter={(e) => { e.currentTarget.style.color = "#666"; }} onMouseLeave={(e) => { e.currentTarget.style.color = "#bbb"; }}>×</button>
+              </div>
+
+              {/* Week Position */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Week</label>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {W.map((w) => {
+                    const isCurrent = w.id >= pos.s && w.id <= pos.e;
+                    const isAvail = availWeeks.includes(w.id) || isCurrent;
+                    return (
+                      <button
+                        key={w.id}
+                        onClick={() => { if (isAvail && !isCurrent) moveTaskToWeek(cardOpen.taskId, cardOpen.wsId, w.id); }}
+                        style={{
+                          padding: "4px 8px", fontSize: 10, fontWeight: isCurrent ? 700 : 500,
+                          background: isCurrent ? wsColor + "18" : "transparent",
+                          border: `1.5px solid ${isCurrent ? wsColor : isAvail ? "#e0ded8" : "#f0eee9"}`,
+                          borderRadius: 4, cursor: isAvail ? "pointer" : "not-allowed",
+                          color: isCurrent ? wsColor : isAvail ? "#666" : "#ddd",
+                          opacity: isAvail ? 1 : 0.4, transition: "all 0.12s",
+                        }}
+                      >{w.l}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Assigned To */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Assigned to</label>
+                <div style={{ display: "flex", gap: 5 }}>
+                  {ASSIGN_CYCLE.map((a) => {
+                    const isActive = asgn === a;
+                    const label = a === "" ? "None" : ASSIGN_LABELS[a];
+                    const color = a === "" ? "#999" : ASSIGN_COLORS[a];
+                    return (
+                      <button
+                        key={a}
+                        onClick={() => setAssigns((prev) => ({ ...prev, [cardOpen.taskId]: a }))}
+                        style={{
+                          padding: "4px 10px", fontSize: 10, fontWeight: isActive ? 700 : 500,
+                          background: isActive ? color + "18" : "transparent",
+                          border: `1.5px solid ${isActive ? color : "#e0ded8"}`,
+                          borderRadius: 4, cursor: "pointer", color: isActive ? color : "#888",
+                          transition: "all 0.12s",
+                        }}
+                      >{label}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Start Date / End Date */}
+              <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Start date</label>
+                  <input
+                    type="date"
+                    value={props.startDate}
+                    onChange={(e) => updateTaskProp(cardOpen.taskId, { startDate: e.target.value })}
+                    style={{
+                      width: "100%", fontSize: 11, padding: "5px 6px", border: "1px solid #e8e6e1",
+                      borderRadius: 4, fontFamily: "inherit", outline: "none", background: "#faf9f6", color: "#444",
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>End date</label>
+                  <input
+                    type="date"
+                    value={props.endDate}
+                    onChange={(e) => updateTaskProp(cardOpen.taskId, { endDate: e.target.value })}
+                    style={{
+                      width: "100%", fontSize: 11, padding: "5px 6px", border: "1px solid #e8e6e1",
+                      borderRadius: 4, fontFamily: "inherit", outline: "none", background: "#faf9f6", color: "#444",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Assets (up to 3) */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>Assets</label>
+                {[0, 1, 2].map((idx) => {
+                  const asset = props.assets?.[idx] || null;
+                  return (
+                    <div key={idx} style={{ marginBottom: 6 }}>
+                      {asset ? (
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 6, padding: "5px 8px",
+                          background: "#f5f4f0", borderRadius: 4, border: "1px solid #e8e6e1",
+                        }}>
+                          <span
+                            onClick={() => triggerAssetDownload(asset)}
+                            style={{ fontSize: 11, color: "#4f46e5", cursor: "pointer", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                            title={getAssetUrl(asset)}
+                          >{getAssetName(asset)}</span>
+                          <button
+                            onClick={() => {
+                              const newAssets = [...(props.assets || [null, null, null])];
+                              newAssets[idx] = null;
+                              updateTaskProp(cardOpen.taskId, { assets: newAssets });
+                            }}
+                            style={{ background: "transparent", border: "none", fontSize: 13, color: "#ccc", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "#ccc"; }}
+                          >×</button>
+                        </div>
+                      ) : (
+                        <AssetInput
+                          onValue={(val) => {
+                            const newAssets = [...(props.assets || [null, null, null])];
+                            newAssets[idx] = val;
+                            updateTaskProp(cardOpen.taskId, { assets: newAssets });
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Notes */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Notes</label>
+                <textarea
+                  defaultValue={props.notes}
+                  placeholder="Add notes…"
+                  onBlur={(e) => updateTaskProp(cardOpen.taskId, { notes: e.target.value })}
+                  style={{
+                    width: "100%", fontSize: 11, lineHeight: 1.6, border: "1px solid #e8e6e1",
+                    borderRadius: 4, padding: "6px 8px", fontFamily: "inherit", resize: "vertical",
+                    minHeight: 60, outline: "none", background: "#faf9f6", color: "#444",
+                  }}
+                />
+              </div>
+
+              {/* Static task info (readonly) */}
+              {ct.dep && <div style={{ fontSize: 10, color: "#bbb", marginBottom: 6 }}>Blocked by: {Array.isArray(ct.dep) ? ct.dep.join(", ") : ct.dep}</div>}
+              {ct.tools && (
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {ct.tools.map((x) => {
+                    const ic = x.includes("⚡");
+                    return (
+                      <span key={x} style={{
+                        fontSize: 9, padding: "2px 7px",
+                        background: ic ? "#eef2ff" : "#f5f4f0",
+                        border: `1px solid ${ic ? "#c7d2fe" : "#e0ded8"}`,
+                        borderRadius: 3, color: ic ? "#4f46e5" : "#888", fontWeight: ic ? 600 : 400,
+                      }}>{x}</span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
         </div>
       )}
 

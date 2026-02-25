@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,3 +16,18 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 export const db = getFirestore(app);
+const storage = getStorage(app);
+
+export async function uploadFile(file) {
+  const ts = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `eddy/${ts}_${safeName}`;
+  const fileRef = storageRef(storage, path);
+  const metadata = {
+    contentType: file.type,
+    contentDisposition: `attachment; filename="${file.name}"`,
+  };
+  await uploadBytes(fileRef, file, metadata);
+  const url = await getDownloadURL(fileRef);
+  return { url, name: file.name };
+}
