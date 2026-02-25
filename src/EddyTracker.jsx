@@ -302,6 +302,7 @@ export default function EddyTracker() {
 
   // Drag state (local only, not persisted until drop)
   const dragRef = useRef(null);
+  const didDragRef = useRef(false); // Suppress click after drag
   const [dragPreview, setDragPreview] = useState(null); // { taskId, s, e }
 
   const getTaskPos = useCallback((t) => {
@@ -314,6 +315,7 @@ export default function EddyTracker() {
   const handleBarMouseDown = useCallback((taskId, wsId, defaultS, defaultE, mode, e) => {
     e.preventDefault();
     e.stopPropagation();
+    didDragRef.current = false;
     const startX = e.clientX;
     const pos = positions[taskId] || { s: defaultS, e: defaultE };
     const duration = pos.e - pos.s;
@@ -323,11 +325,12 @@ export default function EddyTracker() {
     if (!cells.length) return;
     const cellWidth = cells[0].getBoundingClientRect().width;
 
-    // Precompute sibling occupied weeks
+    // Precompute sibling occupied weeks (static + custom tasks)
     const ws = WS.find((w) => w.id === wsId);
     const siblingOccupied = new Set();
     if (ws) {
-      ws.tasks.forEach((t) => {
+      const allTasks = [...ws.tasks, ...(customTasks[wsId] || [])];
+      allTasks.forEach((t) => {
         if (t.id === taskId) return;
         const p = positions[t.id] || { s: t.s, e: t.e };
         for (let w = p.s; w <= p.e; w++) siblingOccupied.add(w);
@@ -381,6 +384,7 @@ export default function EddyTracker() {
         if (blocked) return;
       }
 
+      didDragRef.current = true;
       setDragPreview({ taskId: dr.taskId, s: newS, e: newE });
     };
 
@@ -404,7 +408,7 @@ export default function EddyTracker() {
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [positions, setPositions]);
+  }, [positions, setPositions, customTasks]);
 
   const tog = useCallback((id) => setDone((p) => ({ ...p, [id]: !p[id] })), [setDone]);
 
@@ -755,7 +759,7 @@ export default function EddyTracker() {
                           <div key={w.id} data-week-cell style={{ borderLeft: "1px solid #f0eee9", padding: "4px 3px", display: "flex", alignItems: "center" }}>
                             {inR && (
                               <div
-                                onClick={(e) => { e.stopPropagation(); setCardOpen(cardOpen && cardOpen.taskId === t.id ? null : { taskId: t.id, wsId: ws.id }); }}
+                                onClick={(e) => { e.stopPropagation(); if (didDragRef.current) { didDragRef.current = false; return; } setCardOpen(cardOpen && cardOpen.taskId === t.id ? null : { taskId: t.id, wsId: ws.id }); }}
                                 onMouseDown={(e) => handleBarMouseDown(t.id, ws.id, t.s, t.e, "move", e)}
                                 title="Click to open properties · Drag to move"
                                 style={{
