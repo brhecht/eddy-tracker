@@ -225,6 +225,11 @@ export default function EddyTracker() {
   const [tStat, setTStat] = useFirestoreState("tStat", initToolStatus());
   const [sel, setSel] = useFirestoreState("sel", {});
   const [positions, setPositions] = useFirestoreState("positions", {});
+  const [customTasks, setCustomTasks] = useFirestoreState("customTasks", {}); // { wsId: [task, ...] }
+  const [taskOrder, setTaskOrder] = useFirestoreState("taskOrder", {}); // { wsId: [id, id, ...] }
+
+  // Editing state for inline new-task name
+  const [editingTask, setEditingTask] = useState(null); // taskId currently being renamed
 
   // Drag state (local only, not persisted until drop)
   const dragRef = useRef(null);
@@ -344,20 +349,124 @@ export default function EddyTracker() {
     });
   }, [setAssigns]);
 
+  // Merge static + custom tasks for a workstream, in taskOrder
+  const getOrderedTasks = useCallback((ws) => {
+    const staticTasks = ws.tasks;
+    const custom = customTasks[ws.id] || [];
+    const all = [...staticTasks, ...custom];
+    const order = taskOrder[ws.id];
+    if (!order) return all;
+    const byId = Object.fromEntries(all.map((t) => [t.id, t]));
+    const ordered = order.filter((id) => byId[id]).map((id) => byId[id]);
+    // Append any tasks not in the order (newly added static tasks etc)
+    all.forEach((t) => { if (!order.includes(t.id)) ordered.push(t); });
+    return ordered;
+  }, [customTasks, taskOrder]);
+
+  // Add a new task to a workstream
+  const addTask = useCallback((wsId) => {
+    const id = `custom_${wsId}_${Date.now()}`;
+    const newTask = { id, name: "New task", s: 1, e: 1, hr: 1, as: "", notes: "", custom: true };
+    setCustomTasks((prev) => ({
+      ...prev,
+      [wsId]: [...(prev[wsId] || []), newTask],
+    }));
+    // Add to end of task order
+    const ws = WS.find((w) => w.id === wsId);
+    const staticIds = ws ? ws.tasks.map((t) => t.id) : [];
+    const existingCustomIds = (customTasks[wsId] || []).map((t) => t.id);
+    const currentOrder = taskOrder[wsId] || [...staticIds, ...existingCustomIds];
+    setTaskOrder((prev) => ({
+      ...prev,
+      [wsId]: [...currentOrder, id],
+    }));
+    setEditingTask(id);
+    return id;
+  }, [customTasks, taskOrder, setCustomTasks, setTaskOrder]);
+
+  // Update a custom task field
+  const updateCustomTask = useCallback((wsId, taskId, updates) => {
+    setCustomTasks((prev) => ({
+      ...prev,
+      [wsId]: (prev[wsId] || []).map((t) => t.id === taskId ? { ...t, ...updates } : t),
+    }));
+  }, [setCustomTasks]);
+
+  // Delete a custom task
+  const deleteCustomTask = useCallback((wsId, taskId) => {
+    setCustomTasks((prev) => ({
+      ...prev,
+      [wsId]: (prev[wsId] || []).filter((t) => t.id !== taskId),
+    }));
+    setTaskOrder((prev) => ({
+      ...prev,
+      [wsId]: (prev[wsId] || []).filter((id) => id !== taskId),
+    }));
+    // Clean up related state
+    setDone((p) => { const n = { ...p }; delete n[taskId]; return n; });
+    setAssigns((p) => { const n = { ...p }; delete n[taskId]; return n; });
+    setPositions((p) => { const n = { ...p }; delete n[taskId]; return n; });
+  }, [setCustomTasks, setTaskOrder, setDone, setAssigns, setPositions]);
+
+  // Reorder tasks within a workstream via drag
+  const reorderDragRef = useRef(null);
+  const [reorderOver, setReorderOver] = useState(null); // { wsId, overTaskId }
+
+  const handleReorderDragStart = useCallback((wsId, taskId, e) => {
+    e.dataTransfer.setData("text/plain", taskId);
+    e.dataTransfer.effectAllowed = "move";
+    reorderDragRef.current = { wsId, taskId };
+  }, []);
+
+  const handleReorderDragOver = useCallback((wsId, overTaskId, e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setReorderOver({ wsId, overTaskId });
+  }, []);
+
+  const handleReorderDrop = useCallback((wsId, overTaskId, e) => {
+    e.preventDefault();
+    setReorderOver(null);
+    const dr = reorderDragRef.current;
+    if (!dr || dr.wsId !== wsId || dr.taskId === overTaskId) return;
+
+    const ws = WS.find((w) => w.id === wsId);
+    const staticIds = ws ? ws.tasks.map((t) => t.id) : [];
+    const customIds = (customTasks[wsId] || []).map((t) => t.id);
+    const currentOrder = taskOrder[wsId] || [...staticIds, ...customIds];
+
+    const fromIdx = currentOrder.indexOf(dr.taskId);
+    const toIdx = currentOrder.indexOf(overTaskId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const newOrder = [...currentOrder];
+    newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, dr.taskId);
+
+    setTaskOrder((prev) => ({ ...prev, [wsId]: newOrder }));
+    reorderDragRef.current = null;
+  }, [customTasks, taskOrder, setTaskOrder]);
+
+  const handleReorderDragEnd = useCallback(() => {
+    setReorderOver(null);
+    reorderDragRef.current = null;
+  }, []);
+
   const st = useMemo(() => {
     let bh = 0, nh = 0, tot = 0, dn = 0;
-    WS.forEach((ws) =>
-      ws.tasks.forEach((t) => {
+    WS.forEach((ws) => {
+      const allTasks = [...ws.tasks, ...(customTasks[ws.id] || [])];
+      allTasks.forEach((t) => {
         tot++;
         if (done[t.id]) dn++;
         const a = assigns[t.id] || "";
         if (a === "N") nh += t.hr;
         else if (a === "Both") { bh += Math.ceil(t.hr * 0.5); nh += Math.ceil(t.hr * 0.5); }
         else bh += t.hr;
-      })
-    );
+      });
+    });
     return { bh, nh, tot, dn, pct: tot ? Math.round((dn / tot) * 100) : 0 };
-  }, [done, assigns]);
+  }, [done, assigns, customTasks]);
 
   const isCl = (s) => s && s.includes("⚡");
 
@@ -419,21 +528,45 @@ export default function EddyTracker() {
               );
             })}
           </div>
-          {WS.map((ws) => (
+          {WS.map((ws) => {
+            const orderedTasks = getOrderedTasks(ws);
+            return (
             <div key={ws.id} style={{ marginBottom: 14 }}>
               <div style={{ display: "grid", gridTemplateColumns: "200px repeat(7,1fr)", marginBottom: 2 }}>
                 <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 700, color: ws.color, display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: ws.color, flexShrink: 0 }} />
                   {ws.name}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); addTask(ws.id); }}
+                    title="Add task"
+                    style={{
+                      width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${ws.color}44`,
+                      background: "transparent", color: ws.color, fontSize: 13, lineHeight: 1,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", opacity: 0.5, transition: "opacity 0.15s", flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = 1; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.5; }}
+                  >+</button>
                 </div>
                 {W.map((w) => <div key={w.id} style={{ borderLeft: "1px solid #f0eee9" }} />)}
               </div>
-              {ws.tasks.map((t) => {
+              {orderedTasks.map((t) => {
                 const d = done[t.id], op = openTask === t.id, asgn = assigns[t.id] || "";
                 const pos = getTaskPos(t);
                 const isDragging = dragPreview && dragPreview.taskId === t.id;
+                const isCustom = !!t.custom;
+                const isReorderTarget = reorderOver && reorderOver.wsId === ws.id && reorderOver.overTaskId === t.id;
                 return (
-                  <div key={t.id}>
+                  <div
+                    key={t.id}
+                    draggable
+                    onDragStart={(e) => handleReorderDragStart(ws.id, t.id, e)}
+                    onDragOver={(e) => handleReorderDragOver(ws.id, t.id, e)}
+                    onDrop={(e) => handleReorderDrop(ws.id, t.id, e)}
+                    onDragEnd={handleReorderDragEnd}
+                    style={{ borderTop: isReorderTarget ? `2px solid ${ws.color}` : "2px solid transparent" }}
+                  >
                     <div
                       data-gantt-row
                       onClick={() => { if (!isDragging) setOpenTask(op ? null : t.id); }}
@@ -446,10 +579,41 @@ export default function EddyTracker() {
                       onMouseEnter={(e) => { if (!op) e.currentTarget.style.background = "#faf9f6"; }}
                       onMouseLeave={(e) => { if (!op) e.currentTarget.style.background = "transparent"; }}
                     >
-                      <div style={{ padding: "5px 8px 5px 22px", fontSize: 12, color: d ? "#bbb" : "#444", display: "flex", alignItems: "center", gap: 7, overflow: "hidden" }}>
+                      <div style={{ padding: "5px 8px 5px 12px", fontSize: 12, color: d ? "#bbb" : "#444", display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
+                        {/* Drag grip */}
+                        <span style={{ cursor: "grab", color: "#ccc", fontSize: 10, flexShrink: 0, lineHeight: 1, letterSpacing: 1 }} title="Drag to reorder">⋮⋮</span>
                         <CBox on={d} toggle={() => tog(t.id)} color={ws.color} />
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: d ? "line-through" : "none" }}>{t.name}</span>
+                        {editingTask === t.id && isCustom ? (
+                          <input
+                            autoFocus
+                            defaultValue={t.name}
+                            onBlur={(e) => { updateCustomTask(ws.id, t.id, { name: e.target.value || "New task" }); setEditingTask(null); }}
+                            onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") { setEditingTask(null); } }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              fontSize: 12, border: "none", borderBottom: "1px solid #ccc", outline: "none",
+                              background: "transparent", padding: "0 2px", flex: 1, minWidth: 0, fontFamily: "inherit",
+                            }}
+                          />
+                        ) : (
+                          <span
+                            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: d ? "line-through" : "none", flex: 1 }}
+                            onDoubleClick={(e) => { if (isCustom) { e.stopPropagation(); setEditingTask(t.id); } }}
+                          >{t.name}</span>
+                        )}
                         <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0, fontWeight: 500 }}>{t.hr}h</span>
+                        {isCustom && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteCustomTask(ws.id, t.id); }}
+                            title="Delete task"
+                            style={{
+                              fontSize: 11, color: "#ccc", background: "transparent", border: "none",
+                              cursor: "pointer", padding: "0 2px", flexShrink: 0, lineHeight: 1,
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "#ccc"; }}
+                          >×</button>
+                        )}
                       </div>
                       {W.map((w) => {
                         const inR = w.id >= pos.s && w.id <= pos.e, isS = w.id === pos.s, isE = w.id === pos.e;
@@ -511,7 +675,22 @@ export default function EddyTracker() {
                             Assigned to: {asgn ? <AssignBadge value={asgn} /> : <span style={{ color: "#ccc" }}>unassigned</span>}
                             <span style={{ fontSize: 10, color: "#ccc" }}>· click bar to change</span>
                           </div>
-                          <p style={{ fontSize: 12, color: "#666", lineHeight: 1.7, margin: "0 0 8px" }}>{t.notes}</p>
+                          {isCustom ? (
+                            <textarea
+                              defaultValue={t.notes}
+                              placeholder="Add notes…"
+                              onBlur={(e) => updateCustomTask(ws.id, t.id, { notes: e.target.value })}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                fontSize: 12, color: "#666", lineHeight: 1.7, margin: "0 0 8px", width: "100%",
+                                border: "1px solid #e8e6e1", borderRadius: 4, padding: "6px 8px",
+                                fontFamily: "inherit", resize: "vertical", minHeight: 40, outline: "none",
+                                background: "#faf9f6",
+                              }}
+                            />
+                          ) : (
+                            <p style={{ fontSize: 12, color: "#666", lineHeight: 1.7, margin: "0 0 8px" }}>{t.notes}</p>
+                          )}
                           {t.dep && <div style={{ fontSize: 10, color: "#bbb", marginTop: 4 }}>Blocked by: {Array.isArray(t.dep) ? t.dep.join(", ") : t.dep}</div>}
                           {t.tools && (
                             <div style={{ marginTop: 10, display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -528,6 +707,21 @@ export default function EddyTracker() {
                               })}
                             </div>
                           )}
+                          {isCustom && (
+                            <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
+                              <label style={{ fontSize: 10, color: "#999" }}>Hours:</label>
+                              <input
+                                type="number" min="0" step="0.5"
+                                defaultValue={t.hr}
+                                onBlur={(e) => updateCustomTask(ws.id, t.id, { hr: parseFloat(e.target.value) || 1 })}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  width: 50, fontSize: 11, border: "1px solid #e8e6e1", borderRadius: 4,
+                                  padding: "3px 6px", fontFamily: "inherit", outline: "none", background: "#faf9f6",
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -535,7 +729,8 @@ export default function EddyTracker() {
                 );
               })}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
