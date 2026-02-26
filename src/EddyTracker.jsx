@@ -325,19 +325,7 @@ export default function EddyTracker() {
     if (!cells.length) return;
     const cellWidth = cells[0].getBoundingClientRect().width;
 
-    // Precompute sibling occupied weeks (static + custom tasks)
-    const ws = WS.find((w) => w.id === wsId);
-    const siblingOccupied = new Set();
-    if (ws) {
-      const allTasks = [...ws.tasks, ...(customTasks[wsId] || [])];
-      allTasks.forEach((t) => {
-        if (t.id === taskId) return;
-        const p = positions[t.id] || { s: t.s, e: t.e };
-        for (let w = p.s; w <= p.e; w++) siblingOccupied.add(w);
-      });
-    }
-
-    dragRef.current = { taskId, startX, origS: pos.s, origE: pos.e, duration, cellWidth, mode, siblingOccupied };
+    dragRef.current = { taskId, startX, origS: pos.s, origE: pos.e, duration, cellWidth, mode };
 
     const onMove = (ev) => {
       const dr = dragRef.current;
@@ -349,39 +337,18 @@ export default function EddyTracker() {
       if (dr.mode === "move") {
         newS = dr.origS + weekShift;
         newE = newS + dr.duration;
-        // Clamp to grid
         if (newS < 1) { newS = 1; newE = 1 + dr.duration; }
         if (newE > W.length) { newE = W.length; newS = W.length - dr.duration; }
-        // Check collision — if any week in [newS..newE] is occupied, revert to last valid
-        let blocked = false;
-        for (let w = newS; w <= newE; w++) {
-          if (dr.siblingOccupied.has(w)) { blocked = true; break; }
-        }
-        if (blocked) return; // Don't update preview
       } else if (dr.mode === "resize-left") {
         newS = dr.origS + weekShift;
         newE = dr.origE;
-        // Clamp: can't go below 1, can't pass end
         if (newS < 1) newS = 1;
         if (newS > newE) newS = newE;
-        // Check collision on expanded weeks
-        let blocked = false;
-        for (let w = newS; w < dr.origS; w++) {
-          if (dr.siblingOccupied.has(w)) { blocked = true; break; }
-        }
-        if (blocked) return;
       } else if (dr.mode === "resize-right") {
         newS = dr.origS;
         newE = dr.origE + weekShift;
-        // Clamp: can't exceed grid, can't pass start
         if (newE > W.length) newE = W.length;
         if (newE < newS) newE = newS;
-        // Check collision on expanded weeks
-        let blocked = false;
-        for (let w = dr.origE + 1; w <= newE; w++) {
-          if (dr.siblingOccupied.has(w)) { blocked = true; break; }
-        }
-        if (blocked) return;
       }
 
       didDragRef.current = true;
@@ -408,7 +375,7 @@ export default function EddyTracker() {
 
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [positions, setPositions, customTasks]);
+  }, [positions, setPositions]);
 
   const tog = useCallback((id) => setDone((p) => ({ ...p, [id]: !p[id] })), [setDone]);
 
@@ -479,30 +446,20 @@ export default function EddyTracker() {
     return { ...defaults, ...(taskProps[taskId] || {}) };
   }, [taskProps]);
 
-  // Compute available weeks for a task (current + unoccupied by siblings)
-  const getAvailableWeeks = useCallback((taskId, wsId) => {
-    const ws = WS.find((w) => w.id === wsId);
-    if (!ws) return W.map((w) => w.id);
-    const allTasks = [...ws.tasks, ...(customTasks[wsId] || [])];
-    const occupied = new Set();
-    allTasks.forEach((t) => {
-      if (t.id === taskId) return;
-      const p = positions[t.id] || { s: t.s, e: t.e };
-      for (let w = p.s; w <= p.e; w++) occupied.add(w);
-    });
-    return W.map((w) => w.id).filter((wId) => !occupied.has(wId));
-  }, [positions, customTasks]);
+  // All weeks are available — each task has its own row so no collision
+  const getAvailableWeeks = useCallback(() => {
+    return W.map((w) => w.id);
+  }, []);
 
-  // Move task to a new single-week position from card dropdown
+  // Move task to a new single-week position from card panel
   const moveTaskToWeek = useCallback((taskId, wsId, newWeek) => {
-    const available = getAvailableWeeks(taskId, wsId);
-    if (!available.includes(newWeek)) return false;
+    if (newWeek < 1 || newWeek > W.length) return false;
     setPositions((p) => ({
       ...p,
       [taskId]: { s: newWeek, e: newWeek, weekOf: W.find((w) => w.id === newWeek)?.d || "" },
     }));
     return true;
-  }, [getAvailableWeeks, setPositions]);
+  }, [setPositions]);
 
   // Delete a custom task
   const deleteCustomTask = useCallback((wsId, taskId) => {
