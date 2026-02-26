@@ -697,8 +697,6 @@ export default function EddyTracker() {
                 return (
                   <div
                     key={t.id}
-                    draggable
-                    onDragStart={(e) => handleReorderDragStart(ws.id, t.id, e)}
                     onDragOver={(e) => handleReorderDragOver(ws.id, t.id, e)}
                     onDrop={(e) => handleReorderDrop(ws.id, t.id, e)}
                     onDragEnd={handleReorderDragEnd}
@@ -718,7 +716,12 @@ export default function EddyTracker() {
                     >
                       <div style={{ padding: "5px 8px 5px 12px", fontSize: 12, color: d ? "#bbb" : "#444", display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
                         {/* Drag grip */}
-                        <span style={{ cursor: "grab", color: "#ccc", fontSize: 10, flexShrink: 0, lineHeight: 1, letterSpacing: 1 }} title="Drag to reorder">⋮⋮</span>
+                        <span
+                          draggable
+                          onDragStart={(e) => handleReorderDragStart(ws.id, t.id, e)}
+                          style={{ cursor: "grab", color: "#ccc", fontSize: 10, flexShrink: 0, lineHeight: 1, letterSpacing: 1 }}
+                          title="Drag to reorder"
+                        >⋮⋮</span>
                         <CBox on={d} toggle={() => tog(t.id)} color={ws.color} />
                         {editingTask === t.id && isCustom ? (
                           <input
@@ -760,9 +763,7 @@ export default function EddyTracker() {
                             {inR && (
                               <div
                                 onClick={(e) => { e.stopPropagation(); if (didDragRef.current) { didDragRef.current = false; return; } setCardOpen(cardOpen && cardOpen.taskId === t.id ? null : { taskId: t.id, wsId: ws.id }); }}
-                                onMouseDown={(e) => { e.nativeEvent.stopImmediatePropagation(); handleBarMouseDown(t.id, ws.id, t.s, t.e, "move", e); }}
-                                onDragStart={(e) => e.preventDefault()}
-                                draggable={false}
+                                onMouseDown={(e) => handleBarMouseDown(t.id, ws.id, t.s, t.e, "move", e)}
                                 title="Click to open properties · Drag to move"
                                 style={{
                                   height: 22, width: "100%", cursor: isDragging ? "grabbing" : "grab",
@@ -779,8 +780,7 @@ export default function EddyTracker() {
                                 {/* Left resize handle */}
                                 {isS && (
                                   <div
-                                    onMouseDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); handleBarMouseDown(t.id, ws.id, t.s, t.e, "resize-left", e); }}
-                                    onDragStart={(e) => e.preventDefault()}
+                                    onMouseDown={(e) => { e.stopPropagation(); handleBarMouseDown(t.id, ws.id, t.s, t.e, "resize-left", e); }}
                                     onClick={(e) => e.stopPropagation()}
                                     style={{
                                       position: "absolute", left: 0, top: 0, bottom: 0, width: 6,
@@ -792,8 +792,7 @@ export default function EddyTracker() {
                                 {/* Right resize handle */}
                                 {isE && (
                                   <div
-                                    onMouseDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); handleBarMouseDown(t.id, ws.id, t.s, t.e, "resize-right", e); }}
-                                    onDragStart={(e) => e.preventDefault()}
+                                    onMouseDown={(e) => { e.stopPropagation(); handleBarMouseDown(t.id, ws.id, t.s, t.e, "resize-right", e); }}
                                     onClick={(e) => e.stopPropagation()}
                                     style={{
                                       position: "absolute", right: 0, top: 0, bottom: 0, width: 6,
