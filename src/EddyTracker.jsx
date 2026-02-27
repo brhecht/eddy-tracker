@@ -99,7 +99,7 @@ const WS = [
 
 const TOOLS = [
   {
-    id: "hosting", name: "Course Hosting", by: "Feb 26", opts: [
+    id: "hosting", name: "Course Hosting", by: "Mar 13", opts: [
       { n: "Teachable", p: "$39–119/mo", pro: "Purpose-built, clean UX, Stripe", con: "Tx fees on lower plan", f: "high" },
       { n: "Podia", p: "$39–75/mo", pro: "Simple, includes email+pages, no tx fees", con: "Less robust analytics", f: "high" },
       { n: "Kajabi", p: "$149/mo", pro: "All-in-one, reduces tool count", con: "Expensive, more than needed", f: "medium" },
@@ -109,14 +109,14 @@ const TOOLS = [
     ],
   },
   {
-    id: "email", name: "Email Platform", by: "Feb 26", opts: [
+    id: "email", name: "Email Platform", by: "Mar 13", opts: [
       { n: "Kit (ConvertKit)", p: "$29–59/mo", pro: "Best creator automation, visual flows", con: "Basic email editor", f: "high" },
       { n: "Beehiiv", p: "$0–99/mo", pro: "Great deliverability, newsletter option", con: "Automation less mature", f: "medium" },
       { n: "Platform built-in", p: "$0", pro: "No extra tool, integrated", con: "Limited automation, less portable", f: "medium" },
     ],
   },
   {
-    id: "quiz", name: "Quiz / Lead Magnet", by: "Mar 6", opts: [
+    id: "quiz", name: "Quiz / Lead Magnet", by: "Mar 13", opts: [
       { n: "⚡ Build with Claude → Vercel", p: "$0", pro: "Fully custom, no monthly cost, own it, API to email", con: "Iterate w/ Claude, you maintain", f: "high" },
       { n: "Typeform", p: "$25–50/mo", pro: "Beautiful UX, logic branching, integrations", con: "Response limits on lower tiers", f: "high" },
       { n: "ScoreApp", p: "$29–99/mo", pro: "Built for scored quiz funnels", con: "Pricey, less known", f: "medium" },
@@ -125,7 +125,7 @@ const TOOLS = [
     ],
   },
   {
-    id: "landing", name: "Landing Page", by: "Mar 11", opts: [
+    id: "landing", name: "Landing Page", by: "Mar 20", opts: [
       { n: "⚡ Build with Claude → Vercel", p: "$0", pro: "Fully custom, free, embed quiz, custom A/B", con: "You maintain, no visual editor", f: "high" },
       { n: "Carrd", p: "$19/yr", pro: "Extremely fast, cheap, clean", con: "Limited A/B testing", f: "high" },
       { n: "Framer", p: "$5–15/mo", pro: "Modern, AI-assisted", con: "Less conversion-focused", f: "medium" },
@@ -140,14 +140,14 @@ const TOOLS = [
     ],
   },
   {
-    id: "analytics", name: "Analytics Dashboard", by: "Mar 18", opts: [
+    id: "analytics", name: "Analytics Dashboard", by: "Mar 27", opts: [
       { n: "⚡ Build with Claude → Vercel", p: "$0", pro: "Custom metrics, live updating", con: "API setup complexity", f: "high" },
       { n: "Google Sheets", p: "$0", pro: "Simple, shareable, good enough early", con: "Manual entry", f: "high" },
       { n: "Looker Studio", p: "$0", pro: "Connects data sources, visual", con: "Setup time", f: "medium" },
     ],
   },
   {
-    id: "adtools", name: "Ad Creative Tools", by: "Mar 18", opts: [
+    id: "adtools", name: "Ad Creative Tools", by: "Mar 27", opts: [
       { n: "Phone + natural light", p: "$0", pro: "UGC-style outperforms polished", con: "On camera", f: "high" },
       { n: "Canva Pro", p: "$13/mo", pro: "Fast statics + carousels", con: "Can look generic", f: "high" },
       { n: "⚡ Build with Claude (SVG)", p: "$0", pro: "Unique designs, export as images", con: "Slower", f: "medium" },
@@ -579,8 +579,8 @@ export default function EddyTracker() {
           <span style={{ fontSize: 12, color: "#888", whiteSpace: "nowrap", fontWeight: 500 }}>{st.dn}/{st.tot} · {st.pct}%</span>
         </div>
         <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#777" }}>
-          <span>Course live <b style={{ color: "#16a34a" }}>Mar 23</b></span>
-          <span>Marketing <b style={{ color: "#d97706" }}>Apr 6</b></span>
+          <span>Course live Mar 30</b></span>
+          <span>Marketing Apr 6</b></span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: "#4f46e5", display: "inline-block" }} /> Brian: <b style={{ color: "#1a1a1a" }}>{st.bh}h</b>
           </span>
