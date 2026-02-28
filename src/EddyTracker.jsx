@@ -295,6 +295,7 @@ export default function EddyTracker() {
   const [customTasks, setCustomTasks] = useFirestoreState("customTasks", {}); // { wsId: [task, ...] }
   const [taskOrder, setTaskOrder] = useFirestoreState("taskOrder", {}); // { wsId: [id, id, ...] }
   const [taskProps, setTaskProps] = useFirestoreState("taskProps", {}); // { taskId: { startDate, endDate, assets, notes } }
+  const [nameOverrides, setNameOverrides] = useFirestoreState("nameOverrides", {}); // { taskId_or_wsId: "new name" }
 
   // Editing state for inline new-task name
   const [editingTask, setEditingTask] = useState(null); // taskId currently being renamed
@@ -446,6 +447,12 @@ export default function EddyTracker() {
     const defaults = { startDate: "", endDate: "", assets: [null, null, null], notes: "" };
     return { ...defaults, ...(taskProps[taskId] || {}) };
   }, [taskProps]);
+
+  // Get display name with override support
+  const getName = useCallback((id, fallback) => nameOverrides[id] || fallback, [nameOverrides]);
+  const setName = useCallback((id, name) => {
+    setNameOverrides((prev) => ({ ...prev, [id]: name }));
+  }, [setNameOverrides]);
 
   // All weeks are available — each task has its own row so no collision
   const getAvailableWeeks = useCallback(() => {
@@ -630,7 +637,7 @@ export default function EddyTracker() {
               <div style={{ display: "grid", gridTemplateColumns: "200px repeat(5,1fr)", marginBottom: 2 }}>
                 <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 700, color: ws.color, display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: ws.color, flexShrink: 0 }} />
-                  {ws.name}
+                  {getName(ws.id, ws.name)}
                   <button
                     onClick={(e) => { e.stopPropagation(); addTask(ws.id); }}
                     title="Add task"
@@ -697,7 +704,7 @@ export default function EddyTracker() {
                           <span
                             style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: d ? "line-through" : "none", flex: 1 }}
                             onDoubleClick={(e) => { if (isCustom) { e.stopPropagation(); setEditingTask(t.id); } }}
-                          >{t.name}</span>
+                          >{getName(t.id, t.name)}</span>
                         )}
                         <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0, fontWeight: 500 }}>{t.hr}h</span>
                         {isCustom && (
@@ -848,15 +855,41 @@ export default function EddyTracker() {
               padding: "20px 18px", overflowY: "auto", maxHeight: "calc(100vh - 120px)",
               position: "sticky", top: 0,
             }}>
-              {/* Header */}
+              {/* Header — editable names */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-                <div>
-                  <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: wsColor, marginBottom: 4 }}>{ws?.name}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{ct.name}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <input
+                    key={`ws-${cardOpen.wsId}`}
+                    defaultValue={getName(cardOpen.wsId, ws?.name)}
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== ws?.name) setName(cardOpen.wsId, v); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: wsColor,
+                      marginBottom: 4, display: "block", width: "100%", border: "none", borderBottom: "1px solid transparent",
+                      background: "transparent", padding: "0 0 1px", outline: "none", fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderBottomColor = wsColor; }}
+                    onBlurCapture={(e) => { e.currentTarget.style.borderBottomColor = "transparent"; }}
+                  />
+                  <input
+                    key={`task-${cardOpen.taskId}`}
+                    defaultValue={getName(cardOpen.taskId, ct.name)}
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== ct.name) setName(cardOpen.taskId, v); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      fontSize: 14, fontWeight: 600, color: "#1a1a1a", width: "100%", border: "none",
+                      borderBottom: "1px solid transparent", background: "transparent", padding: "0 0 1px",
+                      outline: "none", fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderBottomColor = "#ccc"; }}
+                    onBlurCapture={(e) => { e.currentTarget.style.borderBottomColor = "transparent"; }}
+                  />
                 </div>
                 <button onClick={() => setCardOpen(null)} style={{
                   background: "transparent", border: "none", fontSize: 18, color: "#bbb", cursor: "pointer",
-                  padding: "0 4px", lineHeight: 1,
+                  padding: "0 4px", lineHeight: 1, flexShrink: 0,
                 }} onMouseEnter={(e) => { e.currentTarget.style.color = "#666"; }} onMouseLeave={(e) => { e.currentTarget.style.color = "#bbb"; }}>×</button>
               </div>
 
