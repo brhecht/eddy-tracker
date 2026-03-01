@@ -25,7 +25,7 @@ const WS = [
   {
     id: "quiz", name: "Lead Magnet / Quiz", color: "#ea580c", tasks: [
       { id: "q1", name: "Design quiz structure", s: 1, e: 1, hr: 2, as: "B", notes: "8–12 questions. 3–4 result archetypes. Scoring logic. Each archetype → course purchase angle. Brainstorm w/ Claude." },
-      { id: "q2", name: "Build quiz", s: 1, e: 1, hr: 3, as: "B", notes: "Logic branching, email gate before results, mobile-first. Claude-built React → Vercel.", tools: ["⚡ Build with Claude → Vercel", "Typeform", "ScoreApp", "Interact", "Tally"], dep: "q1" },
+      { id: "q2", name: "Build quiz", s: 1, e: 1, hr: 3, as: "B", notes: "Logic branching, email gate before results, mobile-first. Claude-built React → Vercel. Same app as landing page.", tools: ["⚡ Build with Claude → Vercel"], dep: "q1" },
       { id: "q3", name: "Write results pages", s: 1, e: 1, hr: 2, as: "B", notes: "One per archetype. Mini sales page: profile → meaning → gap → course fills it. Heavy CTAs.", dep: "q2" },
       { id: "q4", name: "Connect quiz → email capture", s: 1, e: 1, hr: 1, as: "B", notes: "Submission → database/waitlist. Full email nurture comes later. Just capture the lead.", dep: "q3" },
     ],
@@ -33,24 +33,24 @@ const WS = [
   {
     id: "land", name: "Landing Page", color: "#7c3aed", tasks: [
       { id: "l1", name: "Write sales page copy", s: 1, e: 1, hr: 2, as: "B", notes: "Hero → Pain → Solution → What You Learn → Proof → Cred → Pricing → FAQ → CTA. Draft w/ Claude." },
-      { id: "l2", name: "Build landing page V1", s: 1, e: 1, hr: 2, as: "B", notes: "Claude-built React → Vercel. Copy > design at this stage. Get it live fast.", tools: ["⚡ Build with Claude → Vercel", "Carrd", "Framer", "Unbounce"], dep: "l1" },
+      { id: "l2", name: "Build landing page V1", s: 1, e: 1, hr: 2, as: "B", notes: "Claude-built React → Vercel. Copy > design at this stage. Get it live fast. Same app as quiz.", tools: ["⚡ Build with Claude → Vercel"], dep: "l1" },
       { id: "l3", name: "Build A/B variant", s: 2, e: 2, hr: 2, as: "B", notes: "Change ONE variable: headline, hero, or CTA. Not all three. Clean signal.", dep: "l2" },
       { id: "l4", name: "Mobile QA", s: 2, e: 2, hr: 1, as: "Both", notes: "60%+ traffic is mobile. Test on actual phones. Load speed, CTA visibility, form UX.", dep: "l2" },
     ],
   },
   {
     id: "analytics", name: "Analytics / Tracking", color: "#0284c7", tasks: [
-      { id: "t1", name: "Design UTM architecture", s: 1, e: 1, hr: 1, as: "B", notes: "UTM naming convention. Map every touchpoint: ad → landing → quiz → email → purchase.", tools: ["⚡ Build with Claude (doc)", "Google Sheets"] },
+      { id: "t1", name: "Design UTM architecture", s: 1, e: 1, hr: 1, as: "B", notes: "UTM naming convention. Map every touchpoint: ad → landing → quiz → email → purchase.", tools: ["Google Sheets"] },
       { id: "t2", name: "Install Meta Pixel + CAPI", s: 1, e: 1, hr: 2, as: "B", notes: "Pixel on landing + quiz. Conversions API if possible. Claude helps w/ code.", dep: "t1" },
       { id: "t3", name: "Set up conversion events", s: 1, e: 1, hr: 1, as: "B", notes: "PageView, Lead, InitiateCheckout, Purchase. Custom: quiz start, email signup. Test w/ Pixel Helper.", dep: "t2" },
-      { id: "t4", name: "Build analytics dashboard", s: 2, e: 2, hr: 2, as: "B", notes: "Ad spend, CPL, CPA, email CVR, revenue, ROAS. Sheets to start, Claude dashboard when volume justifies.", tools: ["⚡ Build with Claude → Vercel", "Google Sheets", "Looker Studio"], dep: "t3" },
+      { id: "t4", name: "Build analytics dashboard", s: 2, e: 2, hr: 2, as: "B", notes: "Ad spend, CPL, CPA, email CVR, revenue, ROAS. Sheets to start, Claude dashboard when volume justifies.", tools: ["Google Sheets"], dep: "t3" },
     ],
   },
   {
     id: "creative", name: "Ad Creative", color: "#dc2626", tasks: [
       { id: "c1", name: "Define messaging angles", s: 1, e: 1, hr: 1, as: "B", notes: "3 angles: pain, aspiration, proof. Each → multiple creatives. Use adcreative.ai + Claude." },
-      { id: "c2", name: "Create static + carousel", s: 1, e: 1, hr: 2, as: "B", notes: "3 statics (bold text + value prop), 2 carousels. Canva or Claude-built. adcreative.ai for variants.", tools: ["adcreative.ai", "Canva", "⚡ Build with Claude (HTML/SVG)"], dep: "c1" },
-      { id: "c3", name: "Script + record video ads", s: 2, e: 2, hr: 2, as: "Both", notes: "3–4 scripts, 15–30s. Hook in 3 seconds. Phone, good light, clean BG. Batch in one session.", dep: "c1" },
+      { id: "c2", name: "Generate static + carousel ads", s: 1, e: 1, hr: 2, as: "B", notes: "Feed messaging angles + brand assets into AdCreative.ai. Batch generate scored static + carousel variants. Deploy to Meta.", tools: ["AdCreative.ai"], dep: "c1" },
+      { id: "c3", name: "Generate AI video ads", s: 2, e: 2, hr: 2, as: "B", notes: "Claude writes 3-4 scripts per angle (15-30s, hook in 3 seconds). Feed into Creatify Batch Mode → 5-10 AI avatar video variations per script. No camera needed.", tools: ["Creatify", "Claude (scripts)"], dep: "c1" },
     ],
   },
   {
@@ -74,17 +74,17 @@ const WS = [
   },
   {
     id: "email", name: "Email / Nurture", color: "#ec4899", tasks: [
-      { id: "e1", name: "Set up SendGrid free tier", s: 2, e: 2, hr: 1, as: "B", notes: "SendGrid free tier. SPF, DKIM, DMARC. Start warming immediately.", tools: ["SendGrid", "Kit (ConvertKit)", "Platform built-in"] },
-      { id: "e2", name: "Map sequence architecture", s: 2, e: 2, hr: 1, as: "B", notes: "Quiz → Welcome+Results → Nurture (5-7 emails) → Sale. Keep it simple — testing period.", dep: "e1" },
-      { id: "e3", name: "Write nurture sequence", s: 2, e: 3, hr: 4, as: "B", notes: "Each email: one insight, one story, one CTA. Draft w/ Claude, refine in your voice.", dep: "e2" },
-      { id: "e4", name: "Build + test automations", s: 3, e: 3, hr: 2, as: "B", notes: "Triggers, delays, tags. Test every path end-to-end.", dep: "e3" },
+      { id: "e1", name: "Set up Kit free tier", s: 1, e: 1, hr: 1, as: "B", notes: "Kit free account. Connect to Vercel app via API. Set up subscriber tags for UTM source tracking.", tools: ["Kit (free tier)"] },
+      { id: "e2", name: "Build autoresponder", s: 1, e: 1, hr: 1, as: "B", notes: "Kit's 1 free automation: quiz/signup → welcome email + info product gift delivery. Keep it simple.", dep: "e1" },
+      { id: "e3", name: "Write nurture sequence (Phase 2)", s: 3, e: 4, hr: 4, as: "B", notes: "Upgrade to Kit Creator ($39/mo) when ready. Each email: one insight, one story, one CTA. Draft w/ Claude.", dep: "e2" },
+      { id: "e4", name: "Build purchase drip (Phase 2)", s: 4, e: 4, hr: 2, as: "B", notes: "Teachable webhook → Kit tag → post-purchase drip sequence. Test every path end-to-end.", dep: "e3" },
     ],
   },
   {
     id: "host", name: "Course Hosting", color: "#6366f1", tasks: [
-      { id: "h1", name: "Evaluate + select platform", s: 2, e: 2, hr: 2, as: "B", notes: "Score: video quality, Stripe, email integration, student UX, analytics, cost. 2 days max.", tools: ["Teachable", "Podia", "Kajabi", "Thinkific", "Stan Store"] },
-      { id: "h2", name: "Configure platform", s: 2, e: 2, hr: 2, as: "B", notes: "Account, Stripe, domain, branding. Test purchase flow with dummy product.", dep: "h1" },
-      { id: "h3", name: "Upload test lessons", s: 3, e: 3, hr: 2, as: "Both", notes: "Upload 2–3 early cuts. Check playback, mobile, drip settings, completion tracking.", dep: "h2" },
+      { id: "h1", name: "Sign up Teachable Builder", s: 4, e: 4, hr: 1, as: "B", notes: "Teachable Builder $69/mo. 0% tx fees. Connect Stripe, domain, branding. Decision made — just execute when ready.", tools: ["Teachable Builder"] },
+      { id: "h2", name: "Configure checkout + purchase flow", s: 4, e: 4, hr: 2, as: "B", notes: "Pricing, checkout page, abandonment email, order bumps. Test purchase flow with dummy product. Connect Kit via webhook.", dep: "h1" },
+      { id: "h3", name: "Upload test lessons", s: 4, e: 4, hr: 2, as: "Both", notes: "Upload 2–3 early cuts. Check playback, mobile, drip settings, completion tracking.", dep: "h2" },
       { id: "h4", name: "Upload all final lessons", s: 4, e: 4, hr: 3, as: "N", notes: "Final batch. Lesson order, descriptions, downloadables, pricing.", dep: ["h3", "v7"] },
     ],
   },
@@ -99,38 +99,31 @@ const WS = [
 
 const TOOLS = [
   {
-    id: "hosting", name: "Course Hosting", by: "Mar 16", opts: [
-      { n: "Teachable", p: "$39–119/mo", pro: "Purpose-built, clean UX, Stripe", con: "Tx fees on lower plan", f: "high" },
-      { n: "Podia", p: "$39–75/mo", pro: "Simple, includes email+pages, no tx fees", con: "Less robust analytics", f: "high" },
-      { n: "Kajabi", p: "$149/mo", pro: "All-in-one, reduces tool count", con: "Expensive, more than needed", f: "medium" },
-      { n: "Thinkific", p: "$49–99/mo", pro: "Flexible, free tier to test", con: "Can feel clunky", f: "medium" },
-      { n: "Stan Store", p: "$29/mo", pro: "Lightweight, mobile-first", con: "Limited course features", f: "medium" },
-      { n: "Circle.so", p: "$89–219/mo", pro: "You know it", con: "Paying for community you don't need", f: "low" },
+    id: "hosting", name: "Course Hosting", by: "Phase 2", opts: [
+      { n: "Teachable Builder ✓", p: "$69/mo", pro: "0% tx fees, Stripe checkout, abandonment recovery, order bumps, drip content, integrates w/ Kit", con: "No built-in marketing email — use Kit", f: "high" },
+      { n: "Podia Mover", p: "$39/mo", pro: "0% tx fees, built-in email+pages, Stripe+PayPal+Apple Pay", con: "Less course depth (no quizzes, certs, weaker analytics)", f: "medium" },
+      { n: "Stan Store", p: "$29–99/mo", pro: "1-click checkout, mobile-first", con: "Email only on $99 Pro plan, limited course features", f: "low" },
     ],
   },
   {
-    id: "email", name: "Email Platform", by: "Mar 13", opts: [
-      { n: "SendGrid Free", p: "$0", pro: "Free tier, good deliverability, simple API", con: "Basic automation", f: "high" },
-      { n: "Kit (ConvertKit)", p: "$29–59/mo", pro: "Best creator automation, visual flows", con: "Basic email editor", f: "high" },
-      { n: "Beehiiv", p: "$0–99/mo", pro: "Great deliverability, newsletter option", con: "Automation less mature", f: "medium" },
-      { n: "Platform built-in", p: "$0", pro: "No extra tool, integrated", con: "Limited automation, less portable", f: "medium" },
+    id: "email", name: "Email Platform", by: "Mar 6", opts: [
+      { n: "Kit Free ✓", p: "$0 → $39/mo", pro: "10K subs, unlimited emails, 1 automation (autoresponder), landing pages. Upgrade to Creator for drip sequences", con: "Free tier: 1 automation only", f: "high" },
+      { n: "SendGrid Free", p: "$0", pro: "Good deliverability, simple API", con: "No visual automation builder", f: "medium" },
+      { n: "Beehiiv", p: "$0–99/mo", pro: "Great deliverability, newsletter option", con: "Automation less mature", f: "low" },
     ],
   },
   {
     id: "quiz", name: "Quiz / Lead Magnet", by: "Mar 6", opts: [
-      { n: "⚡ Build with Claude → Vercel", p: "$0", pro: "Fully custom, no monthly cost, own it, API to email", con: "Iterate w/ Claude, you maintain", f: "high" },
-      { n: "Typeform", p: "$25–50/mo", pro: "Beautiful UX, logic branching, integrations", con: "Response limits on lower tiers", f: "high" },
-      { n: "ScoreApp", p: "$29–99/mo", pro: "Built for scored quiz funnels", con: "Pricey, less known", f: "medium" },
-      { n: "Interact", p: "$27–53/mo", pro: "Quiz-specific, good templates", con: "Smaller ecosystem", f: "medium" },
+      { n: "⚡ Build with Claude → Vercel ✓", p: "$0", pro: "Same app as landing page, full Pixel/CAPI control, custom scoring, A/B test quiz vs direct capture", con: "You maintain with Claude", f: "high" },
+      { n: "Typeform", p: "$25–50/mo", pro: "Beautiful UX, logic branching, integrations", con: "Response limits, separate tracking domain", f: "medium" },
       { n: "Tally", p: "$0–29/mo", pro: "Free tier, simple", con: "Limited scoring", f: "low" },
     ],
   },
   {
     id: "landing", name: "Landing Page", by: "Mar 6", opts: [
-      { n: "⚡ Build with Claude → Vercel", p: "$0", pro: "Fully custom, free, embed quiz, custom A/B", con: "You maintain, no visual editor", f: "high" },
-      { n: "Carrd", p: "$19/yr", pro: "Extremely fast, cheap, clean", con: "Limited A/B testing", f: "high" },
-      { n: "Framer", p: "$5–15/mo", pro: "Modern, AI-assisted", con: "Less conversion-focused", f: "medium" },
-      { n: "Unbounce", p: "$99/mo", pro: "Best A/B testing", con: "Expensive early", f: "medium" },
+      { n: "⚡ Build with Claude → Vercel ✓", p: "$0", pro: "Fully custom, embed quiz, A/B testing, full Pixel/CAPI control, UTM capture", con: "You maintain with Claude", f: "high" },
+      { n: "Carrd", p: "$19/yr", pro: "Extremely fast, cheap, clean", con: "Limited A/B testing, no quiz embed", f: "medium" },
+      { n: "Kit Landing Pages", p: "$0", pro: "Included in free tier, connects to email", con: "Template-based, less custom", f: "medium" },
     ],
   },
   {
@@ -142,16 +135,23 @@ const TOOLS = [
   },
   {
     id: "analytics", name: "Analytics Dashboard", by: "Mar 13", opts: [
-      { n: "⚡ Build with Claude → Vercel", p: "$0", pro: "Custom metrics, live updating", con: "API setup complexity", f: "high" },
-      { n: "Google Sheets", p: "$0", pro: "Simple, shareable, good enough early", con: "Manual entry", f: "high" },
-      { n: "Looker Studio", p: "$0", pro: "Connects data sources, visual", con: "Setup time", f: "medium" },
+      { n: "Google Sheets ✓", p: "$0", pro: "Simple, shareable, fast to set up. UTMs → Kit tags → weekly pull", con: "Manual entry", f: "high" },
+      { n: "⚡ Build with Claude → Vercel", p: "$0", pro: "Custom metrics, live updating", con: "Premature until volume justifies", f: "medium" },
+      { n: "Looker Studio", p: "$0", pro: "Connects data sources, visual", con: "Setup time", f: "low" },
     ],
   },
   {
-    id: "adtools", name: "Ad Creative Tools", by: "Mar 6", opts: [
-      { n: "Phone + natural light", p: "$0", pro: "UGC-style outperforms polished", con: "On camera", f: "high" },
-      { n: "Canva Pro", p: "$13/mo", pro: "Fast statics + carousels", con: "Can look generic", f: "high" },
-      { n: "⚡ Build with Claude (SVG)", p: "$0", pro: "Unique designs, export as images", con: "Slower", f: "medium" },
+    id: "adcreative", name: "Ad Creative (Static)", by: "Mar 6", opts: [
+      { n: "AdCreative.ai ✓", p: "$29–39/mo", pro: "AI-scored creatives from 100M+ ads, batch generation, direct Meta deploy, headlines+images+copy", con: "Credit-based (10 downloads/mo on Starter)", f: "high" },
+      { n: "Canva Pro", p: "$13/mo", pro: "Templates, manual but flexible", con: "Manual creation, no performance scoring", f: "medium" },
+      { n: "Predis.ai", p: "$0–32/mo", pro: "Free tier, organic+paid content", con: "Less conversion-focused", f: "medium" },
+    ],
+  },
+  {
+    id: "advideo", name: "Ad Creative (Video)", by: "Mar 6", opts: [
+      { n: "Creatify ✓", p: "$19–49/mo", pro: "1000+ AI avatars, batch 5-10 video variations in one click, UGC-style without camera, direct Meta deploy", con: "AI avatars not as good as real UGC (yet)", f: "high" },
+      { n: "Phone + natural light", p: "$0", pro: "Authentic UGC, highest trust", con: "You're on camera, time-intensive", f: "medium" },
+      { n: "⚡ Claude scripts only", p: "$0", pro: "Claude writes hooks/scripts, you record or use Creatify", con: "Still need a production tool", f: "medium" },
     ],
   },
 ];
@@ -160,13 +160,13 @@ const FC = { high: "#16a34a", medium: "#d97706", low: "#dc2626" };
 const SO = ["not started", "researching", "decided", "set up"];
 
 const BUDGET = [
-  { c: "Course Platform", lo: 39, hi: 149, n: "Podia/Teachable vs Kajabi" },
-  { c: "Email Platform", lo: 0, hi: 59, n: "$0 if built-in, Kit ~$29–59" },
-  { c: "Quiz Tool", lo: 0, hi: 50, n: "$0 with Claude, Typeform $25–50" },
-  { c: "Landing Page", lo: 0, hi: 99, n: "$0 with Claude, Carrd $2/mo, Unbounce $99" },
-  { c: "Video Editing", lo: 0, hi: 33, n: "Descript if adopted" },
-  { c: "Ad Creative", lo: 0, hi: 13, n: "Phone + Canva. $0 with Claude" },
-  { c: "Analytics", lo: 0, hi: 0, n: "Sheets or Claude-built. Free." },
+  { c: "Course Platform", lo: 0, hi: 69, n: "Teachable Builder $69/mo — Phase 2 only. $0 now." },
+  { c: "Email Platform", lo: 0, hi: 39, n: "Kit Free now → Kit Creator $39/mo for drip (Phase 2)" },
+  { c: "Quiz + Landing Page", lo: 0, hi: 0, n: "Claude-built → Vercel. Free." },
+  { c: "Video Editing", lo: 0, hi: 33, n: "Descript if adopted (Nico)" },
+  { c: "Ad Creative (Static)", lo: 29, hi: 39, n: "AdCreative.ai Starter" },
+  { c: "Ad Creative (Video)", lo: 19, hi: 49, n: "Creatify Starter–Pro" },
+  { c: "Analytics", lo: 0, hi: 0, n: "Google Sheets. Free." },
   { c: "Ad Spend", lo: 900, hi: 3000, n: "$30–100/day. Start low, scale winners." },
 ];
 
@@ -1165,8 +1165,8 @@ export default function EddyTracker() {
             ))}
             <div style={{ display: "grid", gridTemplateColumns: "155px 95px 95px 1fr", padding: "12px 0", borderTop: "2px solid #e8e6e1", background: "#faf9f6" }}>
               <div style={{ padding: "0 16px", fontSize: 13, color: "#1a1a1a", fontWeight: 700 }}>Monthly Total</div>
-              <div style={{ padding: "0 8px", fontSize: 13, color: "#1a1a1a", textAlign: "right", fontWeight: 700 }}>~$939</div>
-              <div style={{ padding: "0 8px", fontSize: 13, color: "#1a1a1a", textAlign: "right", fontWeight: 700 }}>~$3,403</div>
+              <div style={{ padding: "0 8px", fontSize: 13, color: "#1a1a1a", textAlign: "right", fontWeight: 700 }}>~${BUDGET.reduce((s, r) => s + r.lo, 0).toLocaleString()}</div>
+              <div style={{ padding: "0 8px", fontSize: 13, color: "#1a1a1a", textAlign: "right", fontWeight: 700 }}>~${BUDGET.reduce((s, r) => s + r.hi, 0).toLocaleString()}</div>
               <div style={{ padding: "0 16px", fontSize: 11, color: "#aaa" }}>Excl. Nico</div>
             </div>
           </div>
