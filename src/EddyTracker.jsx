@@ -24,75 +24,71 @@ const ASSIGN_LABELS = { B: "Brian", N: "Nico", Both: "Both", "": "" };
 const WS = [
   {
     id: "quiz", name: "Lead Magnet / Quiz", color: "#ea580c", tasks: [
-      { id: "q1", name: "Design quiz structure", s: 1, e: 1, hr: 2, as: "B", notes: "8–12 questions. 3–4 result archetypes. Scoring logic. Each archetype → course purchase angle. Brainstorm w/ Claude." },
-      { id: "q2", name: "Build quiz", s: 1, e: 1, hr: 3, as: "B", notes: "Logic branching, email gate before results, mobile-first. Claude-built React → Vercel. Same app as landing page.", tools: ["⚡ Build with Claude → Vercel"], dep: "q1" },
-      { id: "q3", name: "Write results pages", s: 1, e: 1, hr: 2, as: "B", notes: "One per archetype. Mini sales page: profile → meaning → gap → course fills it. Heavy CTAs.", dep: "q2" },
-      { id: "q4", name: "Connect quiz → email capture", s: 1, e: 1, hr: 1, as: "B", notes: "Submission → database/waitlist. Full email nurture comes later. Just capture the lead.", dep: "q3" },
+      { id: "q1", name: "Design quiz structure", s: 1, e: 1, hr: 3, as: "B", notes: "8–12 questions. 3–4 result archetypes. Scoring logic. Each archetype → course purchase angle. Brainstorm w/ Claude. This is the core creative work." },
+      { id: "q2", name: "Build quiz app", s: 1, e: 2, hr: 3, as: "B", notes: "Claude-built React on Vercel (founder-assessment repo). Logic branching, mobile-first. Integrated with landing page.", tools: ["⚡ Build with Claude → Vercel"], dep: "q1" },
+      { id: "q3", name: "Write results pages", s: 2, e: 2, hr: 2, as: "B", notes: "One per archetype. Mini sales page: profile → meaning → gap → course fills it. Heavy CTAs.", dep: "q2" },
+      { id: "q4", name: "Connect quiz → Kit form", s: 2, e: 2, hr: 1, as: "N", notes: "Wire quiz submission to Kit form (embed or API POST). Confirm tag 'quiz-lead' applied + UTMs passed through.", dep: ["q2", "e1"] },
     ],
   },
   {
     id: "land", name: "Landing Page", color: "#7c3aed", tasks: [
-      { id: "l1", name: "Write sales page copy", s: 1, e: 1, hr: 2, as: "B", notes: "Hero → Pain → Solution → What You Learn → Proof → Cred → Pricing → FAQ → CTA. Draft w/ Claude." },
-      { id: "l2", name: "Build landing page V1", s: 1, e: 1, hr: 2, as: "B", notes: "Claude-built React → Vercel. Copy > design at this stage. Get it live fast. Same app as quiz.", tools: ["⚡ Build with Claude → Vercel"], dep: "l1" },
-      { id: "l3", name: "Build A/B variant", s: 2, e: 2, hr: 2, as: "B", notes: "Change ONE variable: headline, hero, or CTA. Not all three. Clean signal.", dep: "l2" },
-      { id: "l4", name: "Mobile QA", s: 2, e: 2, hr: 1, as: "Both", notes: "60%+ traffic is mobile. Test on actual phones. Load speed, CTA visibility, form UX.", dep: "l2" },
+      { id: "l1", name: "Update LP copy for Eddy", s: 1, e: 1, hr: 2, as: "B", notes: "Existing Maven-style LP at founder-assessment.vercel.app. Update CONFIG object with Eddy course copy: headline, subtitle, callouts, outcomes, modules, FAQs." },
+      { id: "l2", name: "Add LP variant support", s: 2, e: 2, hr: 1, as: "B", notes: "Claude adds ?v= URL param reader to swap CONFIG. 2–3 headline/angle variants for A/B testing. Same layout, different copy.", tools: ["⚡ Build with Claude → Vercel"], dep: "l1" },
+      { id: "l3", name: "Mobile QA", s: 2, e: 2, hr: 1, as: "Both", notes: "60%+ traffic is mobile. Test on actual phones. Load speed, CTA visibility, form UX.", dep: "l2" },
     ],
   },
   {
     id: "analytics", name: "Analytics / Tracking", color: "#0284c7", tasks: [
-      { id: "t1", name: "Design UTM architecture", s: 1, e: 1, hr: 1, as: "B", notes: "UTM naming convention. Map every touchpoint: ad → landing → quiz → email → purchase.", tools: ["Google Sheets"] },
-      { id: "t2", name: "Install Meta Pixel + CAPI", s: 1, e: 1, hr: 2, as: "B", notes: "Pixel on landing + quiz. Conversions API if possible. Claude helps w/ code.", dep: "t1" },
-      { id: "t3", name: "Set up conversion events", s: 1, e: 1, hr: 1, as: "B", notes: "PageView, Lead, InitiateCheckout, Purchase. Custom: quiz start, email signup. Test w/ Pixel Helper.", dep: "t2" },
-      { id: "t4", name: "Build analytics dashboard", s: 2, e: 2, hr: 2, as: "B", notes: "Ad spend, CPL, CPA, email CVR, revenue, ROAS. Sheets to start, Claude dashboard when volume justifies.", tools: ["Google Sheets"], dep: "t3" },
+      { id: "t1", name: "UTM naming convention + tracking sheet", s: 1, e: 1, hr: 0.5, as: "N", notes: "Google Sheet: Campaign Name, Ad Variant ID, Full URL, Date Launched, Status, Notes. Convention: utm_source=meta, utm_medium=paid, utm_campaign=[name], utm_content=[variant].", tools: ["Google Sheets"] },
+      { id: "t2", name: "Install Meta Pixel", s: 1, e: 1, hr: 0.5, as: "N", notes: "Add Pixel base code to <head> of Vercel app. PageView on load, Lead on form submit. Verify w/ Pixel Helper Chrome extension.", dep: "t1" },
+      { id: "t3", name: "Set up conversion events + custom audience", s: 1, e: 1, hr: 0.5, as: "N", notes: "Custom Conversion for Lead event. Create test Custom Audience: all visitors last 30 days (for retargeting later).", dep: "t2" },
+      { id: "t4", name: "Build analytics dashboard", s: 2, e: 2, hr: 1, as: "N", notes: "Google Sheets: ad spend, CPL, CPA, email CVR. Brian fills in campaign/variant names. Nico maintains formulas.", tools: ["Google Sheets"], dep: "t3" },
     ],
   },
   {
     id: "creative", name: "Ad Creative", color: "#dc2626", tasks: [
-      { id: "c1", name: "Define messaging angles", s: 1, e: 1, hr: 1, as: "B", notes: "3 angles: pain, aspiration, proof. Each → multiple creatives. Use adcreative.ai + Claude." },
-      { id: "c2", name: "Generate static + carousel ads", s: 1, e: 1, hr: 2, as: "B", notes: "Feed messaging angles + brand assets into AdCreative.ai. Batch generate scored static + carousel variants. Deploy to Meta.", tools: ["AdCreative.ai"], dep: "c1" },
-      { id: "c3", name: "Generate AI video ads", s: 2, e: 2, hr: 2, as: "B", notes: "Claude writes 3-4 scripts per angle (15-30s, hook in 3 seconds). Feed into Creatify Batch Mode → 5-10 AI avatar video variations per script. No camera needed.", tools: ["Creatify", "Claude (scripts)"], dep: "c1" },
+      { id: "c1", name: "Define messaging angles", s: 1, e: 1, hr: 1, as: "B", notes: "3 angles: pain, aspiration, proof. Each → multiple creatives. Brainstorm hooks, pain points, transformation promise w/ Claude." },
+      { id: "c2", name: "Generate static + carousel ads", s: 1, e: 2, hr: 2, as: "B", notes: "Feed messaging angles + brand assets into AdCreative.ai. Batch generate scored variants. Kill weak ones, keep 5–6 winners.", tools: ["AdCreative.ai"], dep: "c1" },
+      { id: "c3", name: "Script + generate AI video ads", s: 2, e: 2, hr: 2, as: "B", notes: "Claude writes 3–4 scripts per angle (15–30s, hook in 3 seconds). Feed into Creatify Batch Mode → 5–10 AI avatar variations per script. No camera needed.", tools: ["Creatify", "Claude (scripts)"], dep: "c1" },
     ],
   },
   {
     id: "camp", name: "Campaign Mgmt", color: "#b45309", tasks: [
       { id: "a1", name: "Define target audiences", s: 1, e: 1, hr: 1, as: "B", notes: "3–4 segments by founder stage/vertical/pain. Interest targeting first, then lookalikes from quiz data." },
-      { id: "a2", name: "Set up Meta Business Mgr", s: 1, e: 1, hr: 1, as: "B", notes: "Business Manager, Ad Account, payment. Don't skip Business Verification.", tools: ["Meta Business Manager"] },
-      { id: "a3", name: "Structure + launch campaigns", s: 1, e: 1, hr: 2, as: "B", notes: "Lead magnet funnel first — $30–50/day. Build pixel data + list. Wait 3–5 days before evaluating.", dep: ["a1", "a2", "l2", "q2"] },
-      { id: "a4", name: "Ongoing optimization", s: 2, e: 5, hr: 4, as: "B", notes: "Daily 15min: CTR>1%, CPC, CPL. Kill after $50–100 spend. Weekly: realloc budget. Bi-weekly: full funnel.", dep: "a3" },
-    ],
-  },
-  {
-    id: "video", name: "Video Editing", color: "#0d9488", tasks: [
-      { id: "v1", name: "Style guide + ref edit", s: 1, e: 1, hr: 3, as: "Both", notes: "Define: titles, lower thirds, transitions, music, intro/outro. Edit Lesson 1 together. This is the template." },
-      { id: "v2", name: "Test AI editing tools", s: 1, e: 1, hr: 2, as: "N", notes: "Test Descript on Lesson 1 alongside manual edit. Compare quality + time.", tools: ["Descript", "CapCut Pro", "Riverside"] },
-      { id: "v3", name: "Edit Lessons 1–3", s: 2, e: 2, hr: 6, as: "N", notes: "First batch from Brian's first recording session. Brian reviews + gives feedback FAST.", dep: "v1" },
-      { id: "v4", name: "Edit Lessons 4–6", s: 2, e: 2, hr: 6, as: "N", notes: "Second batch. Faster now. Brian reviews within 24 hours.", dep: "v3" },
-      { id: "v5", name: "Edit Lessons 7–9", s: 3, e: 3, hr: 6, as: "N", notes: "Third batch.", dep: "v4" },
-      { id: "v6", name: "Edit Lessons 10–12", s: 3, e: 3, hr: 6, as: "N", notes: "Final batch.", dep: "v5" },
-      { id: "v7", name: "Post-production polish", s: 3, e: 3, hr: 5, as: "N", notes: "Audio consistency, verify titles, export in platform format. Final QA pass.", dep: "v6" },
+      { id: "a2", name: "Set up Meta Business Mgr + Ad Account", s: 1, e: 1, hr: 0.5, as: "N", notes: "Confirm ad account active, payment on file, Pixel connected. Brian grants Nico access.", tools: ["Meta Business Manager"] },
+      { id: "a3", name: "Structure + launch campaigns", s: 2, e: 2, hr: 2, as: "B", notes: "Lead magnet funnel first — $30–50/day. Upload creatives from AdCreative.ai + Creatify. Build pixel data + list. Wait 3–5 days before evaluating.", dep: ["a1", "a2", "l2", "q2", "c2"] },
+      { id: "a4", name: "Ongoing optimization", s: 3, e: 5, hr: 4, as: "B", notes: "Daily 15min: CTR>1%, CPC, CPL. Kill after $50–100 spend. Weekly: realloc budget. Bi-weekly: full funnel review.", dep: "a3" },
     ],
   },
   {
     id: "email", name: "Email / Nurture", color: "#ec4899", tasks: [
-      { id: "e1", name: "Set up Kit free tier", s: 1, e: 1, hr: 1, as: "B", notes: "Kit free account. Connect to Vercel app via API. Set up subscriber tags for UTM source tracking.", tools: ["Kit (free tier)"] },
-      { id: "e2", name: "Build autoresponder", s: 1, e: 1, hr: 1, as: "B", notes: "Kit's 1 free automation: quiz/signup → welcome email + info product gift delivery. Keep it simple.", dep: "e1" },
-      { id: "e3", name: "Write nurture sequence (Phase 2)", s: 3, e: 4, hr: 4, as: "B", notes: "Upgrade to Kit Creator ($39/mo) when ready. Each email: one insight, one story, one CTA. Draft w/ Claude.", dep: "e2" },
-      { id: "e4", name: "Build purchase drip (Phase 2)", s: 4, e: 4, hr: 2, as: "B", notes: "Teachable webhook → Kit tag → post-purchase drip sequence. Test every path end-to-end.", dep: "e3" },
+      { id: "e1", name: "Set up Kit account + form", s: 1, e: 1, hr: 1, as: "N", notes: "Brian creates Kit account, adds Nico. Nico: create subscriber form, set up 'quiz-lead' tag, test submit, confirm tag + UTM capture.", tools: ["Kit (free tier)"] },
+      { id: "e2", name: "Write autoresponder email", s: 1, e: 1, hr: 1, as: "B", notes: "One email, fires immediately after quiz signup. Short, warm, reinforces why they took the quiz, teases what's coming." },
+      { id: "e3", name: "Build autoresponder automation", s: 1, e: 1, hr: 0.5, as: "N", notes: "Kit Visual Automation: trigger on form submit → send Email 1 (copy from Brian) → 1-day delay → send Email 2 (copy from Brian). Test end-to-end.", dep: ["e1", "e2"] },
+      { id: "e4", name: "Write nurture sequence (Phase 2)", s: 3, e: 4, hr: 4, as: "B", notes: "Upgrade to Kit Creator ($39/mo) when ready. Each email: one insight, one story, one CTA. Draft w/ Claude.", dep: "e3" },
+      { id: "e5", name: "Build purchase drip (Phase 2)", s: 4, e: 4, hr: 2, as: "N", notes: "Teachable webhook → Kit tag → post-purchase drip sequence. Test every path end-to-end.", dep: "e4" },
     ],
   },
   {
-    id: "host", name: "Course Hosting", color: "#6366f1", tasks: [
-      { id: "h1", name: "Sign up Teachable Builder", s: 4, e: 4, hr: 1, as: "B", notes: "Teachable Builder $69/mo. 0% tx fees. Connect Stripe, domain, branding. Decision made — just execute when ready.", tools: ["Teachable Builder"] },
-      { id: "h2", name: "Configure checkout + purchase flow", s: 4, e: 4, hr: 2, as: "B", notes: "Pricing, checkout page, abandonment email, order bumps. Test purchase flow with dummy product. Connect Kit via webhook.", dep: "h1" },
-      { id: "h3", name: "Upload test lessons", s: 4, e: 4, hr: 2, as: "Both", notes: "Upload 2–3 early cuts. Check playback, mobile, drip settings, completion tracking.", dep: "h2" },
-      { id: "h4", name: "Upload all final lessons", s: 4, e: 4, hr: 3, as: "N", notes: "Final batch. Lesson order, descriptions, downloadables, pricing.", dep: ["h3", "v7"] },
+    id: "video", name: "Video Editing (Phase 2)", color: "#0d9488", tasks: [
+      { id: "v1", name: "Style guide + ref edit", s: 3, e: 3, hr: 3, as: "Both", notes: "Phase 2 — after course is recorded. Define: titles, lower thirds, transitions, music, intro/outro. Edit Lesson 1 together as template." },
+      { id: "v2", name: "Test AI editing tools", s: 3, e: 3, hr: 2, as: "N", notes: "Test Descript on Lesson 1 alongside manual edit. Compare quality + time.", tools: ["Descript", "CapCut Pro"] },
+      { id: "v3", name: "Edit all lessons", s: 3, e: 4, hr: 12, as: "N", notes: "Batch edit all recorded lessons. Brian reviews within 24 hours per batch.", dep: "v1" },
+      { id: "v4", name: "Post-production polish", s: 4, e: 4, hr: 5, as: "N", notes: "Audio consistency, verify titles, export in platform format. Final QA pass.", dep: "v3" },
     ],
   },
   {
-    id: "buffer", name: "Buffer / Retakes", color: "#737373", tasks: [
-      { id: "b1", name: "Video retakes if needed", s: 4, e: 4, hr: 4, as: "Both", notes: "Re-record any lessons that didn't land. Nico does quick edits." },
-      { id: "b2", name: "End-to-end funnel QA", s: 4, e: 4, hr: 2, as: "B", notes: "Walk through entire flow: ad → landing → quiz → email → course purchase. Fix any broken links." },
-      { id: "b3", name: "Final launch prep", s: 4, e: 4, hr: 2, as: "Both", notes: "Pricing finalized, launch email drafted, ads scaled up, course access tested." },
+    id: "host", name: "Course Hosting (Phase 2)", color: "#6366f1", tasks: [
+      { id: "h1", name: "Sign up Teachable Builder", s: 4, e: 4, hr: 1, as: "N", notes: "Brian signs up, Nico configures. Teachable Builder $69/mo. 0% tx fees. Connect Stripe, domain, branding.", tools: ["Teachable Builder"] },
+      { id: "h2", name: "Configure checkout + purchase flow", s: 4, e: 4, hr: 2, as: "N", notes: "Pricing, checkout page, abandonment email, order bumps. Test purchase flow with dummy product. Connect Kit via webhook.", dep: "h1" },
+      { id: "h3", name: "Upload lessons + go live", s: 4, e: 5, hr: 4, as: "N", notes: "Upload all final lessons. Lesson order, descriptions, downloadables, drip settings, completion tracking.", dep: ["h2", "v4"] },
+    ],
+  },
+  {
+    id: "buffer", name: "Buffer / QA", color: "#737373", tasks: [
+      { id: "b1", name: "End-to-end funnel QA", s: 2, e: 2, hr: 1, as: "Both", notes: "Walk through entire Phase 1 flow: UTM ad link → landing page → quiz → email captured in Kit w/ tag + UTM data. Fix any broken links." },
+      { id: "b2", name: "End-to-end purchase QA (Phase 2)", s: 4, e: 4, hr: 2, as: "Both", notes: "Full flow: ad → landing → quiz → email → course purchase → post-purchase drip. Fix any broken links." },
+      { id: "b3", name: "Final launch prep", s: 5, e: 5, hr: 2, as: "Both", notes: "Pricing finalized, launch email drafted, ads scaled up, course access tested." },
     ],
   },
 ];
