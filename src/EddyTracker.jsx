@@ -21,6 +21,13 @@ const ASSIGN_CYCLE = ["B", "N", "Both", ""];
 const ASSIGN_COLORS = { B: "#4f46e5", N: "#0d9488", Both: "#d97706", "": "transparent" };
 const ASSIGN_LABELS = { B: "Brian", N: "Nico", Both: "Both", "": "" };
 
+const STATUS_CYCLE = ["todo", "ip", "done"];
+const STATUS_META = {
+  todo: { label: "To do", icon: "", color: "#ccc", bg: "transparent" },
+  ip: { label: "In Progress", icon: "◉", color: "#d97706", bg: "#fffbeb" },
+  done: { label: "Done", icon: "✓", color: "#16a34a", bg: "#ecfdf5" },
+};
+
 const WS = [
   {
     id: "quiz", name: "Lead Magnet / Quiz", color: "#ea580c", tasks: [
@@ -281,6 +288,7 @@ export default function EddyTracker() {
   const [tab, setTab] = useState("gantt");
   const [openTask, setOpenTask] = useState(null);
   const [openCat, setOpenCat] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all"); // "all" | "todo" | "ip" | "done"
 
   // Shared Firestore state
   const [done, setDone] = useFirestoreState("done", {});
@@ -292,6 +300,36 @@ export default function EddyTracker() {
   const [taskOrder, setTaskOrder] = useFirestoreState("taskOrder", {}); // { wsId: [id, id, ...] }
   const [taskProps, setTaskProps] = useFirestoreState("taskProps", {}); // { taskId: { startDate, endDate, assets, notes } }
   const [nameOverrides, setNameOverrides] = useFirestoreState("nameOverrides", {}); // { taskId_or_wsId: "new name" }
+  const [taskStatus, setTaskStatus] = useFirestoreState("taskStatus", {}); // { taskId: "todo"|"ip"|"done" }
+
+  // Status helpers — reads from taskStatus first, falls back to legacy done
+  const getStatus = useCallback((taskId) => {
+    if (taskStatus[taskId]) return taskStatus[taskId];
+    if (done[taskId]) return "done";
+    return "todo";
+  }, [taskStatus, done]);
+
+  const cycleStatus = useCallback((taskId, e) => {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    setTaskStatus((prev) => {
+      const cur = prev[taskId] || (done[taskId] ? "done" : "todo");
+      const idx = STATUS_CYCLE.indexOf(cur);
+      const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+      return { ...prev, [taskId]: next };
+    });
+    // Also sync legacy done for backward compat
+    setDone((prev) => {
+      const cur = taskStatus[taskId] || (done[taskId] ? "done" : "todo");
+      const idx = STATUS_CYCLE.indexOf(cur);
+      const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+      return { ...prev, [taskId]: next === "done" };
+    });
+  }, [taskStatus, done, setTaskStatus, setDone]);
+
+  const setStatusDirect = useCallback((taskId, status) => {
+    setTaskStatus((prev) => ({ ...prev, [taskId]: status }));
+    setDone((prev) => ({ ...prev, [taskId]: status === "done" }));
+  }, [setTaskStatus, setDone]);
 
   // Editing state for inline new-task name
   const [editingTask, setEditingTask] = useState(null); // taskId currently being renamed
@@ -375,7 +413,7 @@ export default function EddyTracker() {
     window.addEventListener("mouseup", onUp);
   }, [positions, setPositions]);
 
-  const tog = useCallback((id) => setDone((p) => ({ ...p, [id]: !p[id] })), [setDone]);
+  const tog = useCallback((id) => cycleStatus(id), [cycleStatus]);
 
   const cycleAssign = useCallback((taskId, e) => {
     e.stopPropagation();
@@ -477,6 +515,7 @@ export default function EddyTracker() {
     }));
     // Clean up related state
     setDone((p) => { const n = { ...p }; delete n[taskId]; return n; });
+    setTaskStatus((p) => { const n = { ...p }; delete n[taskId]; return n; });
     setAssigns((p) => { const n = { ...p }; delete n[taskId]; return n; });
     setPositions((p) => { const n = { ...p }; delete n[taskId]; return n; });
     setTaskProps((p) => { const n = { ...p }; delete n[taskId]; return n; });
@@ -528,20 +567,23 @@ export default function EddyTracker() {
   }, []);
 
   const st = useMemo(() => {
-    let bh = 0, nh = 0, tot = 0, dn = 0;
+    let bh = 0, nh = 0, tot = 0, dn = 0, ip = 0, td = 0;
     WS.forEach((ws) => {
       const allTasks = [...ws.tasks, ...(customTasks[ws.id] || [])];
       allTasks.forEach((t) => {
         tot++;
-        if (done[t.id]) dn++;
+        const s = getStatus(t.id);
+        if (s === "done") dn++;
+        else if (s === "ip") ip++;
+        else td++;
         const a = assigns[t.id] || "";
         if (a === "N") nh += t.hr;
         else if (a === "Both") { bh += Math.ceil(t.hr * 0.5); nh += Math.ceil(t.hr * 0.5); }
         else bh += t.hr;
       });
     });
-    return { bh, nh, tot, dn, pct: tot ? Math.round((dn / tot) * 100) : 0 };
-  }, [done, assigns, customTasks]);
+    return { bh, nh, tot, dn, ip, td, pct: tot ? Math.round((dn / tot) * 100) : 0 };
+  }, [done, assigns, customTasks, getStatus]);
 
   const isCl = (s) => s && s.includes("⚡");
 
@@ -577,8 +619,9 @@ export default function EddyTracker() {
           <span style={{ fontSize: 12, color: "#999", fontWeight: 500, letterSpacing: 0.5 }}>Course Launch Tracker</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <div style={{ flex: 1, height: 6, background: "#e8e6e1", borderRadius: 3, overflow: "hidden" }}>
-            <div style={{ width: `${st.pct}%`, height: "100%", background: "linear-gradient(90deg,#6366f1,#16a34a)", borderRadius: 3, transition: "width 0.3s" }} />
+          <div style={{ flex: 1, height: 6, background: "#e8e6e1", borderRadius: 3, overflow: "hidden", display: "flex" }}>
+            <div style={{ width: `${st.pct}%`, height: "100%", background: "linear-gradient(90deg,#6366f1,#16a34a)", transition: "width 0.3s" }} />
+            {st.ip > 0 && <div style={{ width: `${Math.round((st.ip / st.tot) * 100)}%`, height: "100%", background: "#fbbf24", transition: "width 0.3s" }} />}
           </div>
           <span style={{ fontSize: 12, color: "#888", whiteSpace: "nowrap", fontWeight: 500 }}>{st.dn}/{st.tot} · {st.pct}%</span>
         </div>
@@ -610,8 +653,31 @@ export default function EddyTracker() {
       {tab === "gantt" && (
         <div style={{ display: "flex", gap: 0 }}>
         <div style={{ overflowX: "auto", flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: "#bbb", marginBottom: 8 }}>
-            Click bars to open properties · Drag to move · Drag edges to resize
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ fontSize: 10, color: "#bbb" }}>
+              Click bars to open properties · Drag to move · Drag edges to resize
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {[
+                { id: "all", label: "All", count: st.tot },
+                { id: "todo", label: "To do", count: st.td, color: "#999" },
+                { id: "ip", label: "In Progress", count: st.ip, color: "#d97706" },
+                { id: "done", label: "Done", count: st.dn, color: "#16a34a" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setStatusFilter(f.id)}
+                  style={{
+                    fontSize: 10, padding: "3px 8px", borderRadius: 4, cursor: "pointer",
+                    fontFamily: "inherit", fontWeight: statusFilter === f.id ? 600 : 400,
+                    background: statusFilter === f.id ? (f.color ? f.color + "14" : "#f0eee9") : "transparent",
+                    border: `1px solid ${statusFilter === f.id ? (f.color || "#ccc") : "#e8e6e1"}`,
+                    color: statusFilter === f.id ? (f.color || "#333") : "#aaa",
+                    transition: "all 0.12s",
+                  }}
+                >{f.label} <span style={{ fontSize: 9, opacity: 0.7 }}>{f.count}</span></button>
+              ))}
+            </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "200px repeat(5,1fr)", marginBottom: 4 }}>
             <div />
@@ -649,8 +715,8 @@ export default function EddyTracker() {
                 </div>
                 {W.map((w) => <div key={w.id} style={{ borderLeft: "1px solid #f0eee9" }} />)}
               </div>
-              {orderedTasks.map((t) => {
-                const d = done[t.id], op = openTask === t.id, asgn = assigns[t.id] || "";
+              {orderedTasks.filter((t) => statusFilter === "all" || getStatus(t.id) === statusFilter).map((t) => {
+                const tSt = getStatus(t.id), d = tSt === "done", op = openTask === t.id, asgn = assigns[t.id] || "";
                 const pos = getTaskPos(t);
                 const isDragging = dragPreview && dragPreview.taskId === t.id;
                 const isCustom = !!t.custom;
@@ -683,7 +749,20 @@ export default function EddyTracker() {
                           style={{ cursor: "grab", color: "#ccc", fontSize: 10, flexShrink: 0, lineHeight: 1, letterSpacing: 1 }}
                           title="Drag to reorder"
                         >⋮⋮</span>
-                        <CBox on={d} toggle={() => tog(t.id)} color={ws.color} />
+                        <div
+                          onClick={(e) => { e.stopPropagation(); cycleStatus(t.id, e); }}
+                          title={`Status: ${STATUS_META[tSt].label} — click to cycle`}
+                          style={{
+                            width: 15, height: 15, borderRadius: 4, flexShrink: 0, cursor: "pointer",
+                            border: tSt === "done" ? `2px solid #16a34a` : tSt === "ip" ? `2px solid #d97706` : "2px solid #ccc",
+                            background: tSt === "done" ? "#16a34a" : tSt === "ip" ? "#fffbeb" : "#fff",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            transition: "all 0.15s", boxShadow: tSt === "todo" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                          }}
+                        >
+                          {tSt === "done" && <span style={{ fontSize: 9, color: "#fff", fontWeight: 800 }}>✓</span>}
+                          {tSt === "ip" && <span style={{ fontSize: 8, color: "#d97706", fontWeight: 800 }}>●</span>}
+                        </div>
                         {editingTask === t.id && isCustom ? (
                           <input
                             autoFocus
@@ -763,6 +842,17 @@ export default function EddyTracker() {
                                   />
                                 )}
                                 {isS && asgn && <AssignBadge value={asgn} />}
+                                {isE && tSt !== "todo" && (
+                                  <span
+                                    onClick={(e) => { e.stopPropagation(); cycleStatus(t.id, e); }}
+                                    style={{
+                                      position: "absolute", right: 3, top: "50%", transform: "translateY(-50%)",
+                                      fontSize: tSt === "done" ? 10 : 9, fontWeight: 800, lineHeight: 1,
+                                      color: STATUS_META[tSt].color, cursor: "pointer", zIndex: 3,
+                                    }}
+                                    title={`Status: ${STATUS_META[tSt].label}`}
+                                  >{STATUS_META[tSt].icon}</span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -934,6 +1024,30 @@ export default function EddyTracker() {
                           transition: "all 0.12s",
                         }}
                       >{label}</button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Status */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Status</label>
+                <div style={{ display: "flex", gap: 5 }}>
+                  {STATUS_CYCLE.map((s) => {
+                    const meta = STATUS_META[s];
+                    const isActive = getStatus(cardOpen.taskId) === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setStatusDirect(cardOpen.taskId, s)}
+                        style={{
+                          padding: "4px 10px", fontSize: 10, fontWeight: isActive ? 700 : 500,
+                          background: isActive ? meta.bg : "transparent",
+                          border: `1.5px solid ${isActive ? meta.color : "#e0ded8"}`,
+                          borderRadius: 4, cursor: "pointer", color: isActive ? meta.color : "#888",
+                          transition: "all 0.12s", display: "flex", alignItems: "center", gap: 4,
+                        }}
+                      >{meta.icon && <span style={{ fontSize: s === "done" ? 10 : 8 }}>{meta.icon}</span>}{meta.label}</button>
                     );
                   })}
                 </div>
