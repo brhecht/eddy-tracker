@@ -5,6 +5,7 @@ import { auth, provider } from "./firebase";
 const ALLOWED = [
   "brhnyc1970@gmail.com",
   "nico@humbleconviction.com",
+  "nmejiawork@gmail.com",
 ];
 
 export default function Auth({ children }) {
