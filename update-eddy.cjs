@@ -1,4 +1,4 @@
-// Run with: node ~/Desktop/eddy/update-eddy.js
+// Run with: node ~/Desktop/B-Suite/eddy/update-eddy.js
 const fs = require('fs');
 const path = require('path');
 
@@ -169,4 +169,4 @@ console.log('✓ Tool decision dates shifted');
 
 // === WRITE ===
 fs.writeFileSync(file, code, 'utf8');
-console.log('\n✅ EddyTracker.jsx updated. Run: cd ~/Desktop/eddy && git add -A && git commit -m "5-week plan: funnel-first, compressed timeline" && git push');
+console.log('\n✅ EddyTracker.jsx updated. Run: cd ~/Desktop/B-Suite/eddy && git add -A && git commit -m "5-week plan: funnel-first, compressed timeline" && git push');

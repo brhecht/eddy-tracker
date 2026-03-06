@@ -16,7 +16,7 @@ The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Q
 
 ## Folder Structure
 ```
-~/Desktop/eddy/
+~/Desktop/B-Suite/eddy/
 ├── src/
 │   ├── EddyTracker.jsx   # Main component — ALL static data + UI in one file (~1300 lines)
 │   ├── Auth.jsx           # Google Auth with email allowlist
@@ -33,7 +33,7 @@ The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Q
 
 Also relevant:
 - **Founder Assessment LP:** `~/Dropbox/@ Humble Conviction/Github Local Repo/founder_assessment/` — existing landing page (single `index.html`, Maven-style, CONFIG-driven, deployed at founder-assessment.vercel.app)
-- **Nico handoff doc:** `~/Desktop/eddy/Nico-W1-Setup-Brief.docx` — Word doc with Nico's 6 W1 config tasks
+- **Nico handoff doc:** `~/Desktop/B-Suite/eddy/Nico-W1-Setup-Brief.docx` — Word doc with Nico's 6 W1 config tasks
 
 ## Current Status
 **Phase: Pre-launch — W1 setup week (Mar 2-6)**
@@ -72,7 +72,7 @@ The tracker app is fully functional with:
 
 ## Known Bugs / Issues
 - **Firestore state persistence** — Old `assigns` and `positions` data from previous sessions may override new static defaults. Tasks may show wrong assignee badges or week positions until manually corrected in the UI. Could add a "reset to defaults" button.
-- **HANDOFF.md deadlock** — The original HANDOFF.md file has a persistent resource deadlock from a previous session. This file is saved as HANDOFF2.md instead. Brian should delete the old HANDOFF.md and rename this one: `rm ~/Desktop/eddy/HANDOFF.md && mv ~/Desktop/eddy/HANDOFF2.md ~/Desktop/eddy/HANDOFF.md`
+- **HANDOFF.md deadlock** — The original HANDOFF.md file has a persistent resource deadlock from a previous session. This file is saved as HANDOFF2.md instead. Brian should delete the old HANDOFF.md and rename this one: `rm ~/Desktop/B-Suite/eddy/HANDOFF.md && mv ~/Desktop/B-Suite/eddy/HANDOFF2.md ~/Desktop/B-Suite/eddy/HANDOFF.md`
 - **Vite build fails locally** in the Cowork sandbox (Rollup native module issue) — builds fine on Vercel via git push. Not a real bug, just a dev environment limitation.
 - **Git lock files** — The .git/index.lock file gets stuck when commits fail. Need to `rm -f .git/index.lock` before retrying.
 
@@ -94,7 +94,7 @@ The tracker app is fully functional with:
 - **Firebase project:** Referenced in `src/firebase.js`
 - **Vercel:** Auto-deploys from `brhecht/eddy-tracker` main branch
 - **Founder Assessment:** Separate repo at `~/Dropbox/@ Humble Conviction/Github Local Repo/founder_assessment/`, deployed at founder-assessment.vercel.app
-- **Git:** Push from `~/Desktop/eddy` to `github.com/brhecht/eddy-tracker.git`
+- **Git:** Push from `~/Desktop/B-Suite/eddy` to `github.com/brhecht/eddy-tracker.git`
 - **Firestore keys:** `done`, `taskStatus`, `assigns`, `tStat`, `sel`, `positions`, `customTasks`, `taskOrder`, `taskProps`, `nameOverrides`
 
 ## Open Questions / Decisions Pending
