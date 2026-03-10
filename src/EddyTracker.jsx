@@ -340,6 +340,7 @@ export default function EddyTracker() {
   const [btProjects, setBtProjects] = useState(null); // cached project list
   const [btSending, setBtSending] = useState(false);
   const [btSuccess, setBtSuccess] = useState(false);
+  const [btError, setBtError] = useState(null);
 
   // Drag state (local only, not persisted until drop)
   const dragRef = useRef(null);
@@ -502,15 +503,18 @@ export default function EddyTracker() {
   const openBtModal = useCallback((taskName) => {
     setBtModal({ title: taskName || "", notes: "", projectId: "", bucket: "today" });
     setBtSuccess(false);
+    setBtError(null);
     if (!btProjects) {
       fetch("/api/projects").then(r => r.json()).then(d => {
         if (d.ok) setBtProjects(d.projects);
-      }).catch(() => {});
+        else setBtError("Could not load projects — check BTHINGS_API_KEY env var");
+      }).catch(() => setBtError("Could not reach B Things API"));
     }
   }, [btProjects]);
 
   const submitBtTask = useCallback(async (form) => {
     setBtSending(true);
+    setBtError(null);
     try {
       const resp = await fetch("/api/create-task", {
         method: "POST",
@@ -526,8 +530,12 @@ export default function EddyTracker() {
       if (data.ok) {
         setBtSuccess(true);
         setTimeout(() => { setBtModal(null); setBtSuccess(false); }, 1200);
+      } else {
+        setBtError(data.error || "Task creation failed — check BTHINGS_API_KEY env var");
       }
-    } catch (e) { /* silent */ }
+    } catch (e) {
+      setBtError("Network error — could not reach API");
+    }
     setBtSending(false);
   }, []);
 
@@ -1456,6 +1464,14 @@ export default function EddyTracker() {
                     }}
                   />
                 </div>
+
+                {/* Error message */}
+                {btError && (
+                  <div style={{
+                    marginBottom: 10, padding: "8px 10px", fontSize: 11, color: "#b91c1c",
+                    background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 5,
+                  }}>{btError}</div>
+                )}
 
                 {/* Submit */}
                 <button
