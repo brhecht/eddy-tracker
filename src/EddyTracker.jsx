@@ -501,13 +501,19 @@ export default function EddyTracker() {
 
   // ── B Things task creation ──────────────────────
   const openBtModal = useCallback((taskName) => {
-    setBtModal({ title: taskName || "", notes: "", projectId: "", bucket: "today" });
+    const pickEddy = (projects) => {
+      const match = projects?.find((p) => /eddy/i.test(p.name));
+      return match ? match.id : "";
+    };
+    setBtModal({ title: taskName || "", notes: "", projectId: pickEddy(btProjects), bucket: "today" });
     setBtSuccess(false);
     setBtError(null);
     if (!btProjects) {
       fetch("/api/projects").then(r => r.json()).then(d => {
-        if (d.ok) setBtProjects(d.projects);
-        else setBtError("Could not load projects — check BTHINGS_API_KEY env var");
+        if (d.ok) {
+          setBtProjects(d.projects);
+          setBtModal((m) => m ? { ...m, projectId: pickEddy(d.projects) } : m);
+        } else setBtError("Could not load projects — check BTHINGS_API_KEY env var");
       }).catch(() => setBtError("Could not reach B Things API"));
     }
   }, [btProjects]);
