@@ -335,6 +335,11 @@ export default function EddyTracker() {
   const [editingTask, setEditingTask] = useState(null); // taskId currently being renamed
   // Card panel state
   const [cardOpen, setCardOpen] = useState(null); // { taskId, wsId }
+  // B Things task creation modal
+  const [btModal, setBtModal] = useState(null); // null or { prefill } when open
+  const [btProjects, setBtProjects] = useState(null); // cached project list
+  const [btSending, setBtSending] = useState(false);
+  const [btSuccess, setBtSuccess] = useState(false);
 
   // Drag state (local only, not persisted until drop)
   const dragRef = useRef(null);
@@ -491,6 +496,39 @@ export default function EddyTracker() {
   // All weeks are available — each task has its own row so no collision
   const getAvailableWeeks = useCallback(() => {
     return W.map((w) => w.id);
+  }, []);
+
+  // ── B Things task creation ──────────────────────
+  const openBtModal = useCallback((taskName) => {
+    setBtModal({ title: taskName || "", notes: "", projectId: "", bucket: "today" });
+    setBtSuccess(false);
+    if (!btProjects) {
+      fetch("/api/projects").then(r => r.json()).then(d => {
+        if (d.ok) setBtProjects(d.projects);
+      }).catch(() => {});
+    }
+  }, [btProjects]);
+
+  const submitBtTask = useCallback(async (form) => {
+    setBtSending(true);
+    try {
+      const resp = await fetch("/api/create-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.title,
+          projectId: form.projectId || undefined,
+          bucket: form.bucket || "today",
+          notes: form.notes || undefined,
+        }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        setBtSuccess(true);
+        setTimeout(() => { setBtModal(null); setBtSuccess(false); }, 1200);
+      }
+    } catch (e) { /* silent */ }
+    setBtSending(false);
   }, []);
 
   // Move task to a new single-week position from card panel
@@ -1138,6 +1176,21 @@ export default function EddyTracker() {
                 />
               </div>
 
+              {/* Create B Things Task */}
+              <button
+                onClick={() => openBtModal(getName(cardOpen.taskId, ct.name))}
+                style={{
+                  width: "100%", padding: "8px 0", fontSize: 11, fontWeight: 600,
+                  background: "#3ABD82", color: "#fff", border: "none", borderRadius: 5,
+                  cursor: "pointer", marginBottom: 14, display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: 6, transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#2fa873"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "#3ABD82"; }}
+              >
+                <span style={{ fontSize: 13, lineHeight: 1 }}>＋</span> Create B Things Task
+              </button>
+
               {/* Static task info (readonly) */}
               {ct.dep && <div style={{ fontSize: 10, color: "#bbb", marginBottom: 6 }}>Blocked by: {Array.isArray(ct.dep) ? ct.dep.join(", ") : ct.dep}</div>}
               {ct.tools && (
@@ -1296,6 +1349,133 @@ export default function EddyTracker() {
           </div>
         </div>
       )}
+
+      {/* ── B Things Create Task Modal ────────────────── */}
+      {btModal && (
+        <div
+          onClick={() => setBtModal(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex",
+            alignItems: "center", justifyContent: "center", zIndex: 9999,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 10, width: 380, padding: "24px 22px",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.18)", position: "relative",
+            }}
+          >
+            {btSuccess ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#3ABD82" }}>Task created in B Things</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{
+                      width: 22, height: 22, borderRadius: 5, background: "#3ABD82",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#fff", fontSize: 10, fontWeight: 700, fontFamily: "'Playfair Display', Georgia, serif",
+                    }}>T</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Create B Things Task</span>
+                  </div>
+                  <button
+                    onClick={() => setBtModal(null)}
+                    style={{ background: "transparent", border: "none", fontSize: 18, color: "#bbb", cursor: "pointer", padding: "0 4px" }}
+                  >×</button>
+                </div>
+
+                {/* Title */}
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Title</label>
+                  <input
+                    autoFocus
+                    value={btModal.title}
+                    onChange={(e) => setBtModal((m) => ({ ...m, title: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter" && btModal.title.trim()) submitBtTask(btModal); }}
+                    style={{
+                      width: "100%", fontSize: 13, padding: "8px 10px", border: "1px solid #e8e6e1",
+                      borderRadius: 5, fontFamily: "inherit", outline: "none", background: "#faf9f6", color: "#333",
+                    }}
+                  />
+                </div>
+
+                {/* Project + Bucket row */}
+                <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Project</label>
+                    <select
+                      value={btModal.projectId}
+                      onChange={(e) => setBtModal((m) => ({ ...m, projectId: e.target.value }))}
+                      style={{
+                        width: "100%", fontSize: 11, padding: "7px 8px", border: "1px solid #e8e6e1",
+                        borderRadius: 5, fontFamily: "inherit", outline: "none", background: "#faf9f6", color: "#444",
+                      }}
+                    >
+                      <option value="">Inbox (no project)</option>
+                      {(btProjects || []).map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>When</label>
+                    <select
+                      value={btModal.bucket}
+                      onChange={(e) => setBtModal((m) => ({ ...m, bucket: e.target.value }))}
+                      style={{
+                        width: "100%", fontSize: 11, padding: "7px 8px", border: "1px solid #e8e6e1",
+                        borderRadius: 5, fontFamily: "inherit", outline: "none", background: "#faf9f6", color: "#444",
+                      }}
+                    >
+                      <option value="inbox">Inbox</option>
+                      <option value="today">Today</option>
+                      <option value="tomorrow">Tomorrow</option>
+                      <option value="soon">This Week</option>
+                      <option value="someday">Later</option>
+                      <option value="waiting">Waiting / Delegated</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 4 }}>Notes</label>
+                  <textarea
+                    value={btModal.notes}
+                    onChange={(e) => setBtModal((m) => ({ ...m, notes: e.target.value }))}
+                    placeholder="Optional notes…"
+                    rows={3}
+                    style={{
+                      width: "100%", fontSize: 11, lineHeight: 1.6, border: "1px solid #e8e6e1",
+                      borderRadius: 5, padding: "7px 10px", fontFamily: "inherit", resize: "vertical",
+                      outline: "none", background: "#faf9f6", color: "#444",
+                    }}
+                  />
+                </div>
+
+                {/* Submit */}
+                <button
+                  disabled={btSending || !btModal.title.trim()}
+                  onClick={() => submitBtTask(btModal)}
+                  style={{
+                    width: "100%", padding: "10px 0", fontSize: 13, fontWeight: 700,
+                    background: btSending || !btModal.title.trim() ? "#ccc" : "#3ABD82",
+                    color: "#fff", border: "none", borderRadius: 6, cursor: btSending ? "wait" : "pointer",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  {btSending ? "Creating…" : "Create Task"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
