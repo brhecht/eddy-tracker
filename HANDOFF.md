@@ -1,5 +1,5 @@
 # HANDOFF — Eddy Course Launch Tracker
-*Last updated: March 1, 2026 ~10:00 PM EST*
+*Last updated: March 16, 2026 ~evening ET*
 
 ## Project Overview
 Eddy is a course launch tracker — a React web app used by Brian and Nico to coordinate launching a course on pitching/fundraising for founders (brand: Humble Conviction). The app has a Gantt-style timeline, tool decision matrix, and budget overview. It syncs state in real-time between users via Firebase Firestore.
@@ -16,7 +16,7 @@ The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Q
 
 ## Folder Structure
 ```
-~/Desktop/B-Suite/eddy/
+~/Developer/B-Suite/eddy/
 ├── src/
 │   ├── EddyTracker.jsx   # Main component — ALL static data + UI in one file (~1300 lines)
 │   ├── Auth.jsx           # Google Auth with email allowlist
@@ -33,7 +33,7 @@ The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Q
 
 Also relevant:
 - **Founder Assessment LP:** `~/Dropbox/@ Humble Conviction/Github Local Repo/founder_assessment/` — existing landing page (single `index.html`, Maven-style, CONFIG-driven, deployed at founder-assessment.vercel.app)
-- **Nico handoff doc:** `~/Desktop/B-Suite/eddy/Nico-W1-Setup-Brief.docx` — Word doc with Nico's 6 W1 config tasks
+- **Nico handoff doc:** `~/Developer/B-Suite/eddy/Nico-W1-Setup-Brief.docx` — Word doc with Nico's 6 W1 config tasks
 
 ## Current Status
 **Phase: Pre-launch — W1 setup week (Mar 2-6)**
@@ -72,7 +72,7 @@ The tracker app is fully functional with:
 
 ## Known Bugs / Issues
 - **Firestore state persistence** — Old `assigns` and `positions` data from previous sessions may override new static defaults. Tasks may show wrong assignee badges or week positions until manually corrected in the UI. Could add a "reset to defaults" button.
-- **HANDOFF.md deadlock** — The original HANDOFF.md file has a persistent resource deadlock from a previous session. This file is saved as HANDOFF2.md instead. Brian should delete the old HANDOFF.md and rename this one: `rm ~/Desktop/B-Suite/eddy/HANDOFF.md && mv ~/Desktop/B-Suite/eddy/HANDOFF2.md ~/Desktop/B-Suite/eddy/HANDOFF.md`
+- **HANDOFF.md deadlock** — The original HANDOFF.md file has a persistent resource deadlock from a previous session. This file is saved as HANDOFF2.md instead. Brian should delete the old HANDOFF.md and rename this one: `rm ~/Developer/B-Suite/eddy/HANDOFF.md && mv ~/Developer/B-Suite/eddy/HANDOFF2.md ~/Developer/B-Suite/eddy/HANDOFF.md`
 - **Vite build fails locally** in the Cowork sandbox (Rollup native module issue) — builds fine on Vercel via git push. Not a real bug, just a dev environment limitation.
 - **Git lock files** — The .git/index.lock file gets stuck when commits fail. Need to `rm -f .git/index.lock` before retrying.
 
@@ -94,7 +94,7 @@ The tracker app is fully functional with:
 - **Firebase project:** Referenced in `src/firebase.js`
 - **Vercel:** Auto-deploys from `brhecht/eddy-tracker` main branch
 - **Founder Assessment:** Separate repo at `~/Dropbox/@ Humble Conviction/Github Local Repo/founder_assessment/`, deployed at founder-assessment.vercel.app
-- **Git:** Push from `~/Desktop/B-Suite/eddy` to `github.com/brhecht/eddy-tracker.git`
+- **Git:** Push from `~/Developer/B-Suite/eddy` to `github.com/brhecht/eddy-tracker.git`
 - **Firestore keys:** `done`, `taskStatus`, `assigns`, `tStat`, `sel`, `positions`, `customTasks`, `taskOrder`, `taskProps`, `nameOverrides`
 
 ## Open Questions / Decisions Pending
@@ -104,9 +104,19 @@ The tracker app is fully functional with:
 - **Meta Pixel ID** — Brian sends to Nico for Pixel installation.
 - **Access grants** — Brian confirms/grants Nico access to: Kit, Vercel project, Meta Business Manager.
 
-## Brian's Tomorrow Plan (W1 Day 1)
-1. Create Kit account (2 min) + send Nico the W1 doc + credentials + access confirmations (15 min admin)
-2. Design the quiz with Claude (core creative work — questions, scoring, archetypes)
-3. Generate static ad creatives in AdCreative.ai
-4. Generate AI video ads in Creatify
-5. Write autoresponder email copy, send to Nico
+## Progress Update (March 16, 2026)
+
+No changes to the Eddy tracker app this session. But significant progress on the broader Eddy launch pipeline:
+
+- **Quiz (HC Funnel) is live** — fully rebuilt and deployed at hc-funnel.vercel.app as of March 15. 8 scenario-based questions, 4-dimension scoring, email gate. See hc-funnel HANDOFF.md for full details.
+- **Ad creatives created** — 4 Instagram feed concepts with reference images, text overlays, and ad copy. Creative brief sent to Nico. He will build final ads in AdCreative.ai. See `hc-funnel/ads/CREATIVE-BRIEF.md`.
+- **Email drip strategy researched** — 5-email pre-product waitlist sequence designed. Research memo at `hc-funnel/research/waitlist-email-drip-strategy.md`. Email copy not yet written.
+- **"Expert" Cowork skill created** — on-demand research agent that combines current verified data with academic frameworks. Installed for Brian, `.skill` file in B-Suite root for Nico to install.
+
+### What's Next for the Eddy Launch
+1. Nico builds final ad images in AdCreative.ai using reference images
+2. Brian writes actual email copy for the 5-email drip sequence (strategy is done, copy is not)
+3. Nico wires Kit automation for the email sequence
+4. Meta Pixel installed
+5. Launch Meta ads → quiz → email capture → nurture sequence → demand validation via Email 4 CTA
+6. Video ads (Creatify) still TBD — static ads first
