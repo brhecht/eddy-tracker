@@ -87,8 +87,8 @@ const WS = [
   },
   {
     id: "video", name: "Video Editing + Staging", color: "#6366f1", tasks: [
-      { id: "v1", name: "Edit Lessons 1–3 + Brian review", s: 4, e: 4, as: "N", notes: "Edit as soon as raw files arrive. Brian reviews within 24 hours. Expect some back-and-forth per lesson. Descript for transcript editing + filler removal." },
-      { id: "v2", name: "Edit Lessons 4–6 + Brian review", s: 4, e: 4, as: "N", notes: "Rolling edit pipeline. Nico edits while Brian records next batch." },
+      { id: "v1", name: "Edit Lessons 1–3 + Brian review", s: 4, e: 5, as: "N", notes: "Edit as soon as raw files arrive. Brian reviews within 24 hours. Expect some back-and-forth per lesson. Descript for transcript editing + filler removal." },
+      { id: "v2", name: "Edit Lessons 4–6 + Brian review", s: 4, e: 5, as: "N", notes: "Rolling edit pipeline. Nico edits while Brian records next batch." },
       { id: "v3", name: "Edit Lessons 7–9 + Brian review", s: 4, e: 5, as: "N", notes: "Continue rolling pipeline." },
       { id: "v4", name: "Edit Lessons 10–12 + Brian review", s: 5, e: 5, as: "N", notes: "Final batch. Audio consistency, titles, export in Teachable format." },
     ],
@@ -310,6 +310,7 @@ export default function EddyTracker() {
   const [taskProps, setTaskProps] = useFirestoreState("taskProps", {}); // { taskId: { startDate, endDate, assets, notes } }
   const [nameOverrides, setNameOverrides] = useFirestoreState("nameOverrides", {}); // { taskId_or_wsId: "new name" }
   const [taskStatus, setTaskStatus] = useFirestoreState("taskStatus", {}); // { taskId: "todo"|"ip"|"done" }
+  const [hiddenTasks, setHiddenTasks] = useFirestoreState("hiddenTasks", {}); // { taskId: true }
 
   // Status helpers — reads from taskStatus first, falls back to legacy done
   const getStatus = useCallback((taskId) => {
@@ -554,15 +555,32 @@ export default function EddyTracker() {
     setBtSending(false);
   }, []);
 
-  // Move task to a new single-week position from card panel
-  const moveTaskToWeek = useCallback((taskId, wsId, newWeek) => {
-    if (newWeek < 1 || newWeek > W.length) return false;
+  // Toggle a week on/off for a task's bar span from card panel
+  const toggleTaskWeek = useCallback((taskId, wsId, weekId) => {
+    if (weekId < 1 || weekId > W.length) return;
+    const pos = positions[taskId] || (() => {
+      const t = findTask(taskId, wsId);
+      return t ? { s: t.s, e: t.e } : { s: weekId, e: weekId };
+    })();
+    const isCurrent = weekId >= pos.s && weekId <= pos.e;
+    let newS = pos.s, newE = pos.e;
+    if (isCurrent) {
+      // Remove week: shrink from whichever end is closer (min 1 week)
+      if (pos.s === pos.e) return; // can't shrink below 1 week
+      if (weekId === pos.s) newS = pos.s + 1;
+      else if (weekId === pos.e) newE = pos.e - 1;
+      else if (weekId - pos.s <= pos.e - weekId) newS = weekId + 1;
+      else newE = weekId - 1;
+    } else {
+      // Add week: extend range to include it
+      newS = Math.min(pos.s, weekId);
+      newE = Math.max(pos.e, weekId);
+    }
     setPositions((p) => ({
       ...p,
-      [taskId]: { s: newWeek, e: newWeek, weekOf: W.find((w) => w.id === newWeek)?.d || "" },
+      [taskId]: { s: newS, e: newE, weekOf: W.find((w) => w.id === newS)?.d || "" },
     }));
-    return true;
-  }, [setPositions]);
+  }, [positions, setPositions]);
 
   // Delete a custom task
   const deleteCustomTask = useCallback((wsId, taskId) => {
@@ -582,6 +600,16 @@ export default function EddyTracker() {
     setTaskProps((p) => { const n = { ...p }; delete n[taskId]; return n; });
     if (cardOpen && cardOpen.taskId === taskId) setCardOpen(null);
   }, [setCustomTasks, setTaskOrder, setDone, setAssigns, setPositions, setTaskProps, cardOpen]);
+
+  // Hide any task (static or custom)
+  const hideTask = useCallback((taskId) => {
+    setHiddenTasks((prev) => ({ ...prev, [taskId]: true }));
+    if (cardOpen && cardOpen.taskId === taskId) setCardOpen(null);
+  }, [setHiddenTasks, cardOpen]);
+
+  const unhideTask = useCallback((taskId) => {
+    setHiddenTasks((prev) => { const n = { ...prev }; delete n[taskId]; return n; });
+  }, [setHiddenTasks]);
 
   // Reorder tasks within a workstream via drag
   const reorderDragRef = useRef(null);
@@ -631,7 +659,7 @@ export default function EddyTracker() {
     let bh = 0, nh = 0, tot = 0, dn = 0, ip = 0, td = 0;
     WS.forEach((ws) => {
       const allTasks = [...ws.tasks, ...(customTasks[ws.id] || [])];
-      allTasks.forEach((t) => {
+      allTasks.filter((t) => !hiddenTasks[t.id]).forEach((t) => {
         tot++;
         const s = getStatus(t.id);
         if (s === "done") dn++;
@@ -644,7 +672,7 @@ export default function EddyTracker() {
       });
     });
     return { bh, nh, tot, dn, ip, td, pct: tot ? Math.round((dn / tot) * 100) : 0 };
-  }, [done, assigns, customTasks, getStatus]);
+  }, [done, assigns, customTasks, getStatus, hiddenTasks]);
 
   const isCl = (s) => s && s.includes("⚡");
 
@@ -738,9 +766,21 @@ export default function EddyTracker() {
                   }}
                 >{f.label} <span style={{ fontSize: 9, opacity: 0.7 }}>{f.count}</span></button>
               ))}
+              {Object.keys(hiddenTasks).length > 0 && (
+                <button
+                  onClick={() => setHiddenTasks({})}
+                  style={{
+                    fontSize: 10, padding: "3px 8px", borderRadius: 4, cursor: "pointer",
+                    fontFamily: "inherit", fontWeight: 400, background: "transparent",
+                    border: "1px dashed #e0ded8", color: "#bbb", transition: "all 0.12s", marginLeft: 4,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#666"; e.currentTarget.style.borderColor = "#aaa"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#bbb"; e.currentTarget.style.borderColor = "#e0ded8"; }}
+                >Show {Object.keys(hiddenTasks).length} hidden</button>
+              )}
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "200px repeat(5,1fr)", marginBottom: 4 }}>
+          <div style={{ display: "grid", gridTemplateColumns: `200px repeat(${W.length},1fr)`, marginBottom: 4 }}>
             <div />
             {W.map((w) => {
               const m = MS.find((x) => x.week === w.id);
@@ -757,7 +797,7 @@ export default function EddyTracker() {
             const orderedTasks = getOrderedTasks(ws);
             return (
             <div key={ws.id} style={{ marginBottom: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "200px repeat(5,1fr)", marginBottom: 2 }}>
+              <div style={{ display: "grid", gridTemplateColumns: `200px repeat(${W.length},1fr)`, marginBottom: 2 }}>
                 <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 700, color: ws.color, display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: ws.color, flexShrink: 0 }} />
                   {getName(ws.id, ws.name)}
@@ -776,7 +816,7 @@ export default function EddyTracker() {
                 </div>
                 {W.map((w) => <div key={w.id} style={{ borderLeft: "1px solid #f0eee9" }} />)}
               </div>
-              {orderedTasks.filter((t) => statusFilter === "all" || getStatus(t.id) === statusFilter).map((t) => {
+              {orderedTasks.filter((t) => !hiddenTasks[t.id] && (statusFilter === "all" || getStatus(t.id) === statusFilter)).map((t) => {
                 const tSt = getStatus(t.id), d = tSt === "done", op = openTask === t.id, asgn = assigns[t.id] || "";
                 const pos = getTaskPos(t);
                 const isDragging = dragPreview && dragPreview.taskId === t.id;
@@ -794,13 +834,13 @@ export default function EddyTracker() {
                       data-gantt-row
                       onClick={() => { if (!isDragging) setOpenTask(op ? null : t.id); }}
                       style={{
-                        display: "grid", gridTemplateColumns: "200px repeat(5,1fr)",
+                        display: "grid", gridTemplateColumns: `200px repeat(${W.length},1fr)`,
                         cursor: "pointer", background: op ? "#fff" : "transparent",
                         borderRadius: op ? 6 : 0, opacity: d ? 0.45 : 1, transition: "all 0.12s",
                         boxShadow: op ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
                       }}
-                      onMouseEnter={(e) => { if (!op) e.currentTarget.style.background = "#faf9f6"; }}
-                      onMouseLeave={(e) => { if (!op) e.currentTarget.style.background = "transparent"; }}
+                      onMouseEnter={(e) => { if (!op) e.currentTarget.style.background = "#faf9f6"; const btn = e.currentTarget.querySelector('.task-hide-btn'); if (btn) btn.style.color = "#ccc"; }}
+                      onMouseLeave={(e) => { if (!op) e.currentTarget.style.background = "transparent"; const btn = e.currentTarget.querySelector('.task-hide-btn'); if (btn) btn.style.color = "transparent"; }}
                     >
                       <div style={{ padding: "5px 8px 5px 12px", fontSize: 12, color: d ? "#bbb" : "#444", display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
                         {/* Drag grip */}
@@ -843,18 +883,18 @@ export default function EddyTracker() {
                           >{getName(t.id, t.name)}</span>
                         )}
                         {t.hr ? <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0, fontWeight: 500 }}>{t.hr}h</span> : null}
-                        {isCustom && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteCustomTask(ws.id, t.id); }}
-                            title="Delete task"
-                            style={{
-                              fontSize: 11, color: "#ccc", background: "transparent", border: "none",
-                              cursor: "pointer", padding: "0 2px", flexShrink: 0, lineHeight: 1,
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = "#ccc"; }}
-                          >×</button>
-                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (isCustom) deleteCustomTask(ws.id, t.id); else hideTask(t.id); }}
+                          title={isCustom ? "Delete task" : "Hide task"}
+                          className="task-hide-btn"
+                          style={{
+                            fontSize: 11, color: "transparent", background: "transparent", border: "none",
+                            cursor: "pointer", padding: "0 2px", flexShrink: 0, lineHeight: 1,
+                            transition: "color 0.1s",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = "transparent"; }}
+                        >×</button>
                       </div>
                       {W.map((w) => {
                         const inR = w.id >= pos.s && w.id <= pos.e, isS = w.id === pos.s, isE = w.id === pos.e;
@@ -1046,19 +1086,21 @@ export default function EddyTracker() {
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {W.map((w) => {
                     const isCurrent = w.id >= pos.s && w.id <= pos.e;
-                    const isAvail = availWeeks.includes(w.id) || isCurrent;
+                    const isEdge = isCurrent && (w.id === pos.s || w.id === pos.e);
+                    const isOnly = pos.s === pos.e && isCurrent;
                     return (
                       <button
                         key={w.id}
-                        onClick={() => { if (isAvail && !isCurrent) moveTaskToWeek(cardOpen.taskId, cardOpen.wsId, w.id); }}
+                        onClick={() => toggleTaskWeek(cardOpen.taskId, cardOpen.wsId, w.id)}
                         style={{
                           padding: "4px 8px", fontSize: 10, fontWeight: isCurrent ? 700 : 500,
                           background: isCurrent ? wsColor + "18" : "transparent",
-                          border: `1.5px solid ${isCurrent ? wsColor : isAvail ? "#e0ded8" : "#f0eee9"}`,
-                          borderRadius: 4, cursor: isAvail ? "pointer" : "not-allowed",
-                          color: isCurrent ? wsColor : isAvail ? "#666" : "#ddd",
-                          opacity: isAvail ? 1 : 0.4, transition: "all 0.12s",
+                          border: `1.5px solid ${isCurrent ? wsColor : "#e0ded8"}`,
+                          borderRadius: 4, cursor: isOnly ? "default" : "pointer",
+                          color: isCurrent ? wsColor : "#666",
+                          opacity: isOnly ? 0.6 : 1, transition: "all 0.12s",
                         }}
+                        title={isCurrent ? (isOnly ? "Minimum 1 week" : "Click to remove") : "Click to add"}
                       >{w.l}</button>
                     );
                   })}
@@ -1112,6 +1154,20 @@ export default function EddyTracker() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Hide Task */}
+              <div style={{ marginBottom: 14 }}>
+                <button
+                  onClick={() => hideTask(cardOpen.taskId)}
+                  style={{
+                    padding: "4px 10px", fontSize: 10, fontWeight: 500, background: "transparent",
+                    border: "1.5px solid #e0ded8", borderRadius: 4, cursor: "pointer", color: "#bbb",
+                    transition: "all 0.12s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#ef4444"; e.currentTarget.style.color = "#ef4444"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e0ded8"; e.currentTarget.style.color = "#bbb"; }}
+                >Hide task</button>
               </div>
 
               {/* Start Date / End Date */}
