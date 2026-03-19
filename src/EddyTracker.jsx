@@ -10,10 +10,13 @@ const W = [
   { id: 3, l: "W3", d: "Mar 16–20" },
   { id: 4, l: "W4", d: "Mar 23–27" },
   { id: 5, l: "W5", d: "Mar 30–Apr 3" },
+  { id: 6, l: "W6", d: "Apr 6–10" },
+  { id: 7, l: "W7", d: "Apr 13–17" },
+  { id: 8, l: "W8", d: "Apr 20–24" },
 ];
 
 const MS = [
-  { week: 4, label: "Buffer", color: "#d97706" },
+  { week: 4, label: "Ads Live", color: "#d97706" },
   { week: 5, label: "Course Live", color: "#16a34a" },
 ];
 
@@ -31,71 +34,77 @@ const STATUS_META = {
 const WS = [
   {
     id: "quiz", name: "Lead Magnet / Quiz", color: "#ea580c", tasks: [
-      { id: "q1", name: "Design quiz structure", s: 1, e: 1, hr: 3, as: "B", notes: "8–12 questions. 3–4 result archetypes. Scoring logic. Each archetype → course purchase angle. Brainstorm w/ Claude. This is the core creative work." },
-      { id: "q2", name: "Build quiz app", s: 1, e: 2, hr: 3, as: "B", notes: "Claude-built React on Vercel (founder-assessment repo). Logic branching, mobile-first. Integrated with landing page.", tools: ["⚡ Build with Claude → Vercel"], dep: "q1" },
-      { id: "q3", name: "Write results pages", s: 2, e: 2, hr: 2, as: "B", notes: "One per archetype. Mini sales page: profile → meaning → gap → course fills it. Heavy CTAs.", dep: "q2" },
-      { id: "q4", name: "Connect quiz → Kit form", s: 2, e: 2, hr: 1, as: "N", notes: "Wire quiz submission to Kit form (embed or API POST). Confirm tag 'quiz-lead' applied + UTMs passed through.", dep: ["q2", "e1"] },
+      { id: "q1", name: "Design quiz (8 scenarios, 4 dimensions, 3 tiers)", s: 1, e: 3, as: "B", notes: "8 scenario-based questions (not self-assessment). 4 scoring dimensions: Clarity, Investor Fluency, Self-Awareness, Persuasion Instincts. 3 tiers: Lost in the Noise / The Pieces Are There / So Close It Hurts. Emotional arc: easy entry → uncomfortable middle → mirror → aspirational close. All content in HC-PHASE1-DISCOVERY.md." },
+      { id: "q2", name: "Build quiz app (React/Vite/Vercel)", s: 2, e: 3, as: "B", notes: "Config-driven React app at hc-funnel.vercel.app. All content in src/config/funnel.js. Scoring engine: per-question best=2/next=1/weak=0, raw 0-4 per dimension → display 2/5, 3/5, 4/5. Self-Awareness floors at 3/5. Raw total 0-16 for tier assignment. Validated via Monte Carlo (10K runs, 3 persona types)." },
+      { id: "q3", name: "Results page + scorecard + email gate", s: 3, e: 3, as: "B", notes: "Calculating pause (2.5s) → tier badge (colored pill) → scorecard with filled-dot visualization + explanation + cracked door line per dimension → email gate CTA card ('Send My Recommendations') + waitlist checkbox. Diagnosis on-page, prescription gated behind email." },
+      { id: "q4", name: "Design system (navy/orange/Inter)", s: 3, e: 3, as: "B", notes: "New design system: navy text (#1A2332) + orange accent (#E8845A) on cool-white (#F8F9FC). Inter font throughout. Research-backed for B2B trust + mobile conversion. Replaced warm cream/coral/Playfair Display." },
+      { id: "q5", name: "Connect quiz → Kit + Firestore", s: 3, e: 3, as: "N", notes: "Kit subscription via server-side Vercel proxy (/api/subscribe) to bypass ad blockers. Firestore lead capture stores quiz answers, raw scores, display scores, tier, waitlist flag. Firebase project: eddy-tracker-82486." },
     ],
   },
   {
     id: "land", name: "Landing Page", color: "#7c3aed", tasks: [
-      { id: "l1", name: "Update LP copy for Eddy", s: 1, e: 1, hr: 2, as: "B", notes: "Existing Maven-style LP at founder-assessment.vercel.app. Update CONFIG object with Eddy course copy: headline, subtitle, callouts, outcomes, modules, FAQs." },
-      { id: "l2", name: "Add LP variant support", s: 2, e: 2, hr: 1, as: "B", notes: "Claude adds ?v= URL param reader to swap CONFIG. 2–3 headline/angle variants for A/B testing. Same layout, different copy.", tools: ["⚡ Build with Claude → Vercel"], dep: "l1" },
-      { id: "l3", name: "Mobile QA", s: 2, e: 2, hr: 1, as: "Both", notes: "60%+ traffic is mobile. Test on actual phones. Load speed, CTA visibility, form UX.", dep: "l2" },
+      { id: "l1", name: "Landing page copy + design", s: 2, e: 3, as: "B", notes: "'Investor-Tested Insights' positioning — the quiz reveals what investors see but won't tell you. Hero + feature cards → /quiz CTA. Mobile-first (80%+ traffic from Meta ads, 375px viewport, 56px min tap targets). Deployed at hc-funnel.vercel.app." },
     ],
   },
   {
-    id: "analytics", name: "Analytics / Tracking", color: "#0284c7", tasks: [
-      { id: "t1", name: "UTM naming convention + tracking sheet", s: 1, e: 1, hr: 0.5, as: "N", notes: "Google Sheet: Campaign Name, Ad Variant ID, Full URL, Date Launched, Status, Notes. Convention: utm_source=meta, utm_medium=paid, utm_campaign=[name], utm_content=[variant].", tools: ["Google Sheets"] },
-      { id: "t2", name: "Install Meta Pixel", s: 1, e: 1, hr: 0.5, as: "N", notes: "Add Pixel base code to <head> of Vercel app. PageView on load, Lead on form submit. Verify w/ Pixel Helper Chrome extension.", dep: "t1" },
-      { id: "t3", name: "Set up conversion events + custom audience", s: 1, e: 1, hr: 0.5, as: "N", notes: "Custom Conversion for Lead event. Create test Custom Audience: all visitors last 30 days (for retargeting later).", dep: "t2" },
-      { id: "t4", name: "Build analytics dashboard", s: 2, e: 2, hr: 1, as: "N", notes: "Google Sheets: ad spend, CPL, CPA, email CVR. Brian fills in campaign/variant names. Nico maintains formulas.", tools: ["Google Sheets"], dep: "t3" },
+    id: "email", name: "Email / Results Delivery", color: "#ec4899", tasks: [
+      { id: "e1", name: "Write email results logic + content", s: 3, e: 3, as: "B", notes: "Define how each user's quiz answers in Firestore generate personalized results email content. Full recommendations + Brian's interpretation + concrete next steps. Rich HTML via Kit (not PDF). Content-marketing tone, not upsell. 'Conversation, Not Pitch' HC principle throughout." },
+      { id: "e2", name: "Wire results email delivery (Zapier + Kit)", s: 3, e: 4, as: "N", notes: "Firestore lead data → Zapier → Kit. Trigger personalized results email based on tier + dimension scores. Server-side delivery. Test end-to-end with all 3 tiers." },
+      { id: "e3", name: "Write 5-email nurture/drip sequence", s: 4, e: 4, as: "B", notes: "Each email: one insight, one story, one CTA. Newsletter suppressed during drip to avoid mixed signals. Draft w/ Claude. Upgrade Kit to Creator ($39/mo) for multi-automation." },
+      { id: "e4", name: "Build drip automation in Kit", s: 4, e: 5, as: "N", notes: "Wire 5-email nurture sequence in Kit Visual Automation. Trigger after results email delivered. Spacing TBD. Test every path end-to-end." },
     ],
   },
   {
     id: "creative", name: "Ad Creative", color: "#dc2626", tasks: [
-      { id: "c1", name: "Define messaging angles", s: 1, e: 1, hr: 1, as: "B", notes: "3 angles: pain, aspiration, proof. Each → multiple creatives. Brainstorm hooks, pain points, transformation promise w/ Claude." },
-      { id: "c2", name: "Generate static + carousel ads", s: 1, e: 2, hr: 2, as: "B", notes: "Feed messaging angles + brand assets into AdCreative.ai. Batch generate scored variants. Kill weak ones, keep 5–6 winners.", tools: ["AdCreative.ai"], dep: "c1" },
-      { id: "c3", name: "Script + generate AI video ads", s: 2, e: 2, hr: 2, as: "B", notes: "Claude writes 3–4 scripts per angle (15–30s, hook in 3 seconds). Feed into Creatify Batch Mode → 5–10 AI avatar variations per script. No camera needed.", tools: ["Creatify", "Claude (scripts)"], dep: "c1" },
+      { id: "c1", name: "Messaging angles + first draft ads", s: 2, e: 3, as: "B", notes: "3 angles: pain, aspiration, proof. Static ads via AdCreative.ai (AI-scored, batch generated). Video ads via Creatify (AI avatar, 15-30s, hook in 3 seconds). First drafts complete." },
+      { id: "c2", name: "Revise ad creatives (final versions)", s: 3, e: 3, as: "B", notes: "Review first draft performance scores. Kill weak variants, refine winners. Final static + video assets ready for handoff to Nico." },
+      { id: "c3", name: "Production + upload ads into Meta", s: 3, e: 4, as: "N", notes: "Receive final creatives from Brian. Format for Meta specs. Upload into Ad Manager. Associate with campaigns + audiences. Confirm tracking pixels fire correctly on each creative." },
+    ],
+  },
+  {
+    id: "analytics", name: "Analytics / Tracking", color: "#0284c7", tasks: [
+      { id: "t1", name: "Install Meta Pixel on hc-funnel", s: 3, e: 3, as: "N", notes: "Add Pixel base code to <head> of hc-funnel Vercel app. PageView on load, Lead on email capture. Verify w/ Pixel Helper Chrome extension." },
+      { id: "t2", name: "Conversion events + custom audiences", s: 3, e: 4, as: "N", notes: "Custom Conversion for Lead event. Custom Audience: all visitors last 30 days (retargeting). Quiz completers audience. Email subscribers audience." },
+      { id: "t3", name: "UTM convention + tracking sheet", s: 3, e: 4, as: "N", notes: "Google Sheet: Campaign Name, Ad Variant ID, Full URL, Date Launched, Status, Notes. Convention: utm_source=meta, utm_medium=paid, utm_campaign=[name], utm_content=[variant]." },
+      { id: "t4", name: "Analytics dashboard", s: 4, e: 4, as: "N", notes: "Google Sheets: ad spend, CPC, CPL, quiz completion rate, email capture rate, waitlist check rate, score distribution. Pancake Principle — first 2-3 weeks are for data collection, not conversion optimization." },
     ],
   },
   {
     id: "camp", name: "Campaign Mgmt", color: "#b45309", tasks: [
-      { id: "a1", name: "Define target audiences", s: 1, e: 1, hr: 1, as: "B", notes: "3–4 segments by founder stage/vertical/pain. Interest targeting first, then lookalikes from quiz data." },
-      { id: "a2", name: "Set up Meta Business Mgr + Ad Account", s: 1, e: 1, hr: 0.5, as: "N", notes: "Confirm ad account active, payment on file, Pixel connected. Brian grants Nico access.", tools: ["Meta Business Manager"] },
-      { id: "a3", name: "Structure + launch campaigns", s: 2, e: 2, hr: 2, as: "B", notes: "Lead magnet funnel first — $30–50/day. Upload creatives from AdCreative.ai + Creatify. Build pixel data + list. Wait 3–5 days before evaluating.", dep: ["a1", "a2", "l2", "q2", "c2"] },
-      { id: "a4", name: "Ongoing optimization", s: 3, e: 5, hr: 4, as: "B", notes: "Daily 15min: CTR>1%, CPC, CPL. Kill after $50–100 spend. Weekly: realloc budget. Bi-weekly: full funnel review.", dep: "a3" },
+      { id: "a1", name: "Define target audiences", s: 2, e: 3, as: "B", notes: "Primary: The Stalled Founder (male, 24-35, first-time fundraiser). Sub-states: Pre-launch Naive and Post-First-Attempt Frustrated. Interest targeting first, then lookalikes from quiz data. Edge segment: The Passionate Believer (high engagement, low conversion — don't optimize for, don't fight)." },
+      { id: "a2", name: "Set up Meta Business Mgr + Ad Account", s: 3, e: 4, as: "N", notes: "Confirm ad account active, payment on file, Pixel connected. Connect to hc-funnel domain. Configure for lead magnet objective." },
+      { id: "a3", name: "Structure + launch campaigns", s: 4, e: 4, as: "Both", notes: "Lead magnet funnel — $30-50/day. Upload final creatives. Target audiences from Brian. Pixel + UTM tracking confirmed. Wait 3-5 days before evaluating. Pancake Principle: first batch is for learning." },
+      { id: "a4", name: "Ongoing ad optimization", s: 5, e: 8, as: "B", notes: "Daily 15min: CTR>1%, CPC, CPL. Kill underperformers after $50-100 spend. Weekly: reallocate budget to winners. Bi-weekly: full funnel review (CPC → CPL → completion rate → email capture rate)." },
     ],
   },
   {
-    id: "email", name: "Email / Nurture", color: "#ec4899", tasks: [
-      { id: "e1", name: "Set up Kit account + form", s: 1, e: 1, hr: 1, as: "N", notes: "Brian creates Kit account, adds Nico. Nico: create subscriber form, set up 'quiz-lead' tag, test submit, confirm tag + UTM capture.", tools: ["Kit (free tier)"] },
-      { id: "e2", name: "Write autoresponder email", s: 1, e: 1, hr: 1, as: "B", notes: "One email, fires immediately after quiz signup. Short, warm, reinforces why they took the quiz, teases what's coming." },
-      { id: "e3", name: "Build autoresponder automation", s: 1, e: 1, hr: 0.5, as: "N", notes: "Kit Visual Automation: trigger on form submit → send Email 1 (copy from Brian) → 1-day delay → send Email 2 (copy from Brian). Test end-to-end.", dep: ["e1", "e2"] },
-      { id: "e4", name: "Write nurture sequence (Phase 2)", s: 3, e: 4, hr: 4, as: "B", notes: "Upgrade to Kit Creator ($39/mo) when ready. Each email: one insight, one story, one CTA. Draft w/ Claude.", dep: "e3" },
-      { id: "e5", name: "Build purchase drip (Phase 2)", s: 4, e: 4, hr: 2, as: "N", notes: "Teachable webhook → Kit tag → post-purchase drip sequence. Test every path end-to-end.", dep: "e4" },
+    id: "record", name: "Course Recording", color: "#0d9488", tasks: [
+      { id: "r1", name: "Record Lessons 1–3", s: 4, e: 4, as: "B", notes: "Batch 1 of 4. Record and hand off raw files to Nico for editing immediately." },
+      { id: "r2", name: "Record Lessons 4–6", s: 4, e: 4, as: "B", notes: "Batch 2 of 4. Every other day cadence." },
+      { id: "r3", name: "Record Lessons 7–9", s: 4, e: 4, as: "B", notes: "Batch 3 of 4." },
+      { id: "r4", name: "Record Lessons 10–12", s: 4, e: 5, as: "B", notes: "Batch 4 of 4. Final recordings. Nico edits in parallel as batches arrive." },
     ],
   },
   {
-    id: "video", name: "Video Editing (Phase 2)", color: "#0d9488", tasks: [
-      { id: "v1", name: "Style guide + ref edit", s: 3, e: 3, hr: 3, as: "Both", notes: "Phase 2 — after course is recorded. Define: titles, lower thirds, transitions, music, intro/outro. Edit Lesson 1 together as template." },
-      { id: "v2", name: "Test AI editing tools", s: 3, e: 3, hr: 2, as: "N", notes: "Test Descript on Lesson 1 alongside manual edit. Compare quality + time.", tools: ["Descript", "CapCut Pro"] },
-      { id: "v3", name: "Edit all lessons", s: 3, e: 4, hr: 12, as: "N", notes: "Batch edit all recorded lessons. Brian reviews within 24 hours per batch.", dep: "v1" },
-      { id: "v4", name: "Post-production polish", s: 4, e: 4, hr: 5, as: "N", notes: "Audio consistency, verify titles, export in platform format. Final QA pass.", dep: "v3" },
+    id: "video", name: "Video Editing + Staging", color: "#6366f1", tasks: [
+      { id: "v1", name: "Edit Lessons 1–3 + Brian review", s: 4, e: 4, as: "N", notes: "Edit as soon as raw files arrive. Brian reviews within 24 hours. Expect some back-and-forth per lesson. Descript for transcript editing + filler removal." },
+      { id: "v2", name: "Edit Lessons 4–6 + Brian review", s: 4, e: 4, as: "N", notes: "Rolling edit pipeline. Nico edits while Brian records next batch." },
+      { id: "v3", name: "Edit Lessons 7–9 + Brian review", s: 4, e: 5, as: "N", notes: "Continue rolling pipeline." },
+      { id: "v4", name: "Edit Lessons 10–12 + Brian review", s: 5, e: 5, as: "N", notes: "Final batch. Audio consistency, titles, export in Teachable format." },
     ],
   },
   {
-    id: "host", name: "Course Hosting (Phase 2)", color: "#6366f1", tasks: [
-      { id: "h1", name: "Sign up Teachable Builder", s: 4, e: 4, hr: 1, as: "N", notes: "Brian signs up, Nico configures. Teachable Builder $69/mo. 0% tx fees. Connect Stripe, domain, branding.", tools: ["Teachable Builder"] },
-      { id: "h2", name: "Configure checkout + purchase flow", s: 4, e: 4, hr: 2, as: "N", notes: "Pricing, checkout page, abandonment email, order bumps. Test purchase flow with dummy product. Connect Kit via webhook.", dep: "h1" },
-      { id: "h3", name: "Upload lessons + go live", s: 4, e: 5, hr: 4, as: "N", notes: "Upload all final lessons. Lesson order, descriptions, downloadables, drip settings, completion tracking.", dep: ["h2", "v4"] },
+    id: "host", name: "Course Hosting", color: "#8b5cf6", tasks: [
+      { id: "h1", name: "Sign up Teachable + configure", s: 4, e: 4, as: "N", notes: "Teachable Builder $69/mo. 0% tx fees. Connect Stripe, domain, branding. Brian signs up, Nico configures." },
+      { id: "h2", name: "Stage lessons on Teachable (rolling)", s: 4, e: 5, as: "N", notes: "Upload edited lessons as they clear review. Lesson order, descriptions, downloadables, drip settings, completion tracking." },
+      { id: "h3", name: "Configure checkout + purchase flow", s: 5, e: 5, as: "N", notes: "Pricing, checkout page, abandonment email, order bumps. Connect Kit via webhook for post-purchase drip. Test purchase flow end-to-end." },
     ],
   },
   {
-    id: "buffer", name: "Buffer / QA", color: "#737373", tasks: [
-      { id: "b1", name: "End-to-end funnel QA", s: 2, e: 2, hr: 1, as: "Both", notes: "Walk through entire Phase 1 flow: UTM ad link → landing page → quiz → email captured in Kit w/ tag + UTM data. Fix any broken links." },
-      { id: "b2", name: "End-to-end purchase QA (Phase 2)", s: 4, e: 4, hr: 2, as: "Both", notes: "Full flow: ad → landing → quiz → email → course purchase → post-purchase drip. Fix any broken links." },
-      { id: "b3", name: "Final launch prep", s: 5, e: 5, hr: 2, as: "Both", notes: "Pricing finalized, launch email drafted, ads scaled up, course access tested." },
+    id: "launch", name: "Launch / QA", color: "#737373", tasks: [
+      { id: "b1", name: "End-to-end funnel QA", s: 4, e: 4, as: "Both", notes: "Full Phase 1 flow: UTM ad link → landing page → quiz → email capture → results email delivered with correct personalization. Fix any broken links or tracking gaps." },
+      { id: "b2", name: "End-to-end purchase QA", s: 5, e: 5, as: "Both", notes: "Full flow: ad → landing → quiz → email → course purchase on Teachable → post-purchase drip fires. All 12 lessons accessible. Payment processing confirmed." },
+      { id: "b3", name: "Course live — Apr 1", s: 5, e: 5, as: "Both", notes: "Pricing finalized, launch email drafted, ads scaled up, course access tested. Go live." },
     ],
   },
 ];
@@ -629,9 +638,9 @@ export default function EddyTracker() {
         else if (s === "ip") ip++;
         else td++;
         const a = assigns[t.id] || "";
-        if (a === "N") nh += t.hr;
-        else if (a === "Both") { bh += Math.ceil(t.hr * 0.5); nh += Math.ceil(t.hr * 0.5); }
-        else bh += t.hr;
+        if (a === "N") nh += (t.hr || 0);
+        else if (a === "Both") { bh += Math.ceil((t.hr || 0) * 0.5); nh += Math.ceil((t.hr || 0) * 0.5); }
+        else bh += (t.hr || 0);
       });
     });
     return { bh, nh, tot, dn, ip, td, pct: tot ? Math.round((dn / tot) * 100) : 0 };
@@ -833,7 +842,7 @@ export default function EddyTracker() {
                             onDoubleClick={(e) => { if (isCustom) { e.stopPropagation(); setEditingTask(t.id); } }}
                           >{getName(t.id, t.name)}</span>
                         )}
-                        <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0, fontWeight: 500 }}>{t.hr}h</span>
+                        {t.hr ? <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0, fontWeight: 500 }}>{t.hr}h</span> : null}
                         {isCustom && (
                           <button
                             onClick={(e) => { e.stopPropagation(); deleteCustomTask(ws.id, t.id); }}
@@ -955,7 +964,7 @@ export default function EddyTracker() {
                               <label style={{ fontSize: 10, color: "#999" }}>Hours:</label>
                               <input
                                 type="number" min="0" step="0.5"
-                                defaultValue={t.hr}
+                                defaultValue={t.hr || ""}
                                 onBlur={(e) => updateCustomTask(ws.id, t.id, { hr: parseFloat(e.target.value) || 1 })}
                                 onClick={(e) => e.stopPropagation()}
                                 style={{
