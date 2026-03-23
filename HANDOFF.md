@@ -1,10 +1,10 @@
 # HANDOFF — Eddy Course Launch Tracker
-*Last updated: March 19, 2026 ~afternoon ET*
+*Last updated: March 23, 2026 ~afternoon ET*
 
 ## Project Overview
-Eddy is a course launch tracker — a React web app used by Brian and Nico to coordinate launching a pitching/fundraising course for founders (brand: Humble Conviction). The app has a Gantt-style timeline, tool decision matrix, and budget overview. It syncs state in real-time between users via Firebase Firestore.
+Eddy is a course launch tracker — a React web app used by Brian and Nico to coordinate launching a course on pitching/fundraising for founders (brand: Humble Conviction). The app has a Gantt-style timeline, tool decision matrix, and budget overview. It syncs state in real-time between users via Firebase Firestore.
 
-The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Quiz/Assessment → Email Capture + Autoresponder → Course Purchase. Course live date: April 1, 2026.
+The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Quiz/Assessment → Email Capture + Autoresponder. Course hosting and content creation are Phase 2 — the immediate goal is to test demand and learn fast.
 
 ## Tech Stack
 - **Frontend:** React 19 + Vite 6, single-page app
@@ -18,7 +18,7 @@ The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Q
 ```
 ~/Developer/B-Suite/eddy/
 ├── src/
-│   ├── EddyTracker.jsx   # Main component — ALL static data + UI in one file (~1400 lines)
+│   ├── EddyTracker.jsx   # Main component — ALL static data + UI in one file (~1300 lines)
 │   ├── Auth.jsx           # Google Auth with email allowlist
 │   ├── firebase.js        # Firebase config + Storage upload helper
 │   ├── useFirestoreState.js # Debounced Firestore sync hook (core state engine)
@@ -31,68 +31,80 @@ The broader Eddy project is a validation funnel: Meta Ads → Landing Page → Q
 └── HANDOFF.md             # This file
 ```
 
+Also relevant:
+- **Founder Assessment LP:** `~/Dropbox/@ Humble Conviction/Github Local Repo/founder_assessment/` — existing landing page (single `index.html`, Maven-style, CONFIG-driven, deployed at founder-assessment.vercel.app)
+- **Nico handoff doc:** `~/Developer/B-Suite/eddy/Nico-W1-Setup-Brief.docx` — Word doc with Nico's 6 W1 config tasks
+
 ## Current Status
-**Phase: Active launch prep — W3 (Mar 16–20). Course live target: April 1.**
+**Phase: Pre-launch — quiz and email pipeline complete, ad campaign pending**
 
 The tracker app is fully functional with:
-- **8-week Gantt timeline** (W1 Mar 2 through W8 Apr 24), extended from original 5 weeks
-- **10 workstreams, 35 tasks** — all rewritten March 19 to align with HC-PHASE1-DISCOVERY.md business memo
-- Milestones: "Ads Live" (W4) and "Course Live" (W5)
-- Task card side panel with week toggle, assignee, status, dates, assets, notes
-- **Week toggle** — sidebar week buttons toggle on/off to add/remove weeks from a task's Gantt bar span (not just move to a single week)
-- **Hide any task** — X on hover for every task row (static tasks get hidden/restorable, custom tasks get deleted). "Show N hidden" pill appears in filter bar when tasks are hidden
+- Gantt timeline with drag-to-move, drag-to-resize bars
+- Task card side panel (week, assignee, status, dates, assets, notes)
 - Three-state task status: todo / in progress / done (click to cycle)
 - Status filter pills above Gantt (All / To do / In Progress / Done) with counts
+- Status icons on Gantt bars (amber dot for IP, green check for done)
 - Progress bar shows green (done) + amber (in progress) segments
 - Tool decision matrix with 8 categories, all locked in
 - Dynamic budget table
 - Custom task creation, reordering, renaming
 - Real-time sync between Brian and Nico via Firestore
 
-**Current workstreams (as of March 19):**
-1. Lead Magnet / Quiz — 5 tasks, all done (quiz app live at hc-funnel.vercel.app)
-2. Landing Page — 1 task, done
-3. Email / Results Delivery — 4 tasks (email results logic in progress, wiring + drip pending)
-4. Ad Creative — 3 tasks (first drafts done, revisions in progress, production pending)
-5. Analytics / Tracking — 4 tasks (Meta Pixel, conversion events, UTMs, dashboard — all Nico)
-6. Campaign Mgmt — 4 tasks (audiences done, Meta BM setup + campaign launch + optimization pending)
-7. Course Recording — 4 tasks (W4, 4 batches of 3 lessons every other day, Brian)
-8. Video Editing + Staging — 4 tasks (W4-W5, Nico edits rolling as batches arrive, offset from recording)
-9. Course Hosting — 3 tasks (Teachable setup W4, staging W4-W5, checkout W5)
-10. Launch / QA — 3 tasks (funnel QA W4, purchase QA W5, course live W5)
+**Tool selections are finalized:**
+- Hosting: Teachable Builder ($69/mo, Phase 2)
+- Email: Kit free tier ($0, upgrades to $39/mo for Phase 2 drip)
+- Quiz: Build with Claude on Vercel ($0)
+- Landing Page: Build with Claude on Vercel ($0) — existing LP at founder-assessment.vercel.app
+- Video Editing: Descript (Nico's domain, Phase 2)
+- Analytics: Google Sheets ($0)
+- Ad Creative (Static): AdCreative.ai ($29-39/mo)
+- Ad Creative (Video): Creatify ($19-49/mo)
 
-## Recent Changes (March 19, 2026)
-1. **Complete task rewrite** — All 10 workstreams and 35 tasks rewritten to match HC-PHASE1-DISCOVERY.md business memo. Old placeholder tasks from March 1 replaced with actual project state.
-2. **Timeline extended W1–W8** (was W1–W5). Added 3 weeks through Apr 24 for post-launch optimization.
-3. **Milestones updated** — "Buffer" → "Ads Live" (W4), "Course Live" stays at W5.
-4. **Course production backward-planned from April 1** — Recording in 4 batches of 3 lessons (every other day, W4). Editing offset: Nico edits in parallel as batches arrive (W4–W5). Teachable staging rolling.
-5. **Week toggle in sidebar** — Replaced single-week-move with toggle behavior. Click highlighted week to shrink bar, click unhighlighted week to extend bar. Minimum 1 week enforced.
-6. **Hide any task** — Added `hiddenTasks` Firestore state. X appears on hover for every task row. Static tasks hidden (restorable via "Show N hidden" pill), custom tasks deleted. Filter bar shows hidden count.
-7. **Dynamic grid columns** — Gantt grid now uses `W.length` instead of hardcoded 5 columns.
-8. **Hours field removed** — Dropped `hr` from all task data per Brian's instruction ("no hour constraints"). UI handles missing hours gracefully.
-9. **Edit task offset fix** — v1 (Edit Lessons 1–3) and v2 (Edit Lessons 4–6) now span W4–W5 to properly show editing pipeline offset from recording.
+## Recent Changes (March 23, 2026)
+
+No changes to the Eddy tracker app this session. Significant progress on the broader Eddy launch pipeline via HC Funnel:
+
+- **Action plan email pipeline complete** — AI-generated personalized emails now go through a 3-layer self-eval audit (recipient simulation, course flow audit, parity check) before sending via Resend. Six prompt fixes for content quality + contrast closer content guardrails. Three commits pushed to hc-funnel.
+- **GA4 tracking added** to hc-funnel
+- **Brian headshot updated** on hc-funnel
+- **Meta Pixel audit** completed on hc-funnel
+
+### Previous Sessions
+- **March 16:** Ad creatives package (4 Instagram feed concepts with reference images, creative brief for Nico), waitlist email drip strategy researched, "Expert" Cowork skill created
+- **March 15:** Complete quiz rewrite — 8 scenario-based questions, new scoring engine (Monte Carlo validated), new design system, full rebuild deployed at hc-funnel.vercel.app
 
 ## Known Bugs / Issues
-- **Firestore state persistence** — Old `assigns` and `positions` data from previous sessions may override new static defaults. Tasks may show wrong assignee badges or week positions until manually corrected in the UI.
-- **Vite build fails locally** in the Cowork sandbox (Rollup native module / permission issue with dist cleanup) — builds fine in /tmp or on Vercel via git push. Workaround: build from /tmp, push via fresh clone to /tmp.
-- **Git lock files** — The mounted folder's .git gets lock files stuck when commits fail. Workaround: push via fresh clone to /tmp (`git clone → copy file → commit → push`).
+- **Firestore state persistence** — Old `assigns` and `positions` data from previous sessions may override new static defaults. Could add a "reset to defaults" button.
+- **Vite build fails locally** in the Cowork sandbox (Rollup native module issue) — builds fine on Vercel via git push.
+- **Git lock files** — The .git/index.lock file gets stuck when commits fail. Need to `rm -f .git/index.lock` before retrying.
 
 ## Planned Features / Backlog
-- **Firestore state reset** — Optional "reset to defaults" button to clear stale position/assignee overrides from previous sessions.
+1. **Email drip sequence** — 5-email nurture strategy is designed (see hc-funnel research memo), actual copy not yet written. Email 1 (action plan) is now complete.
+2. **Kit automation** — wire email content to Kit autoresponder sequences
+3. **Meta ad campaign launch** — depends on Nico building final ads in AdCreative.ai + email content ready
+4. **LP variant support** — Add `?v=` URL param reader to founder-assessment LP for A/B testing
+5. **Firestore state reset** — Optional "reset to defaults" button to clear stale overrides
+6. **Circle cancellation** — Brian is paying for Circle but has migrated content off. Cancel once Teachable is verified (Phase 2).
+7. **Video ads (Creatify)** — TBD, static ads first
 
 ## Design Decisions & Constraints
 - **Single-file architecture** — All static data (workstreams, tools, budget) and UI lives in EddyTracker.jsx. Intentional for a 2-person tool.
-- **Brian = creative, Nico = backend/config** — Brian handles quiz design, ad creatives, copy, messaging, course recording. Nico handles all backend wiring, tool setup, editing, staging, tracking.
-- **No hour constraints** — Brian explicitly does not want hour estimates on tasks. Weekly granularity is sufficient.
-- **Week toggle vs. single-move** — Sidebar week buttons toggle weeks on/off for multi-week spans. Previous behavior (click = move to that single week) was replaced because users need to shrink/extend bars, not just relocate them.
-- **Hidden tasks stored in Firestore** — `hiddenTasks` map allows hiding any task (static or custom) without deleting static data. Reversible via "Show N hidden" button.
+- **Brian = creative, Nico = config** — Brian handles quiz design, ad creatives, copy, messaging. Nico handles all third-party tool setup (Kit, Pixel, UTM, Meta BM, form connections).
+- **Phase 1 = validation funnel only** — No course hosting, no purchase flow, no drip campaigns yet. Just: Ad -> LP -> Quiz -> Email capture + autoresponder.
+- **Existing LP as foundation** — founder-assessment.vercel.app has a Maven-style layout driven by a CONFIG object.
+- **Kit over alternatives** — Free tier: 10K subs, unlimited emails, 1 automation, landing pages included.
+- **AdCreative.ai + Creatify combo** — AI-scored static ads + AI avatar video ads.
 
 ## Environment & Config
-- **Firebase project:** `eddy-tracker-82486` (shared with hc-funnel and b-marketing)
+- **Firebase project:** Referenced in `src/firebase.js` — `eddy-tracker-82486` (shared with hc-funnel)
 - **Vercel:** Auto-deploys from `brhecht/eddy-tracker` main branch
-- **Live URL:** https://eddy-tracker.vercel.app
-- **Git push method:** Fresh clone to /tmp due to mounted folder lock file issues. Token in `~/Developer/B-Suite/.git-token`.
-- **Firestore keys:** `done`, `taskStatus`, `hiddenTasks`, `assigns`, `tStat`, `sel`, `positions`, `customTasks`, `taskOrder`, `taskProps`, `nameOverrides`
+- **Founder Assessment:** Separate repo at `~/Dropbox/@ Humble Conviction/Github Local Repo/founder_assessment/`, deployed at founder-assessment.vercel.app
+- **Git:** Push from `~/Developer/B-Suite/eddy` to `github.com/brhecht/eddy-tracker.git`
+- **Firestore keys:** `done`, `taskStatus`, `assigns`, `tStat`, `sel`, `positions`, `customTasks`, `taskOrder`, `taskProps`, `nameOverrides`
 
 ## Open Questions / Decisions Pending
-None — tracker is up to date with current project state. Next session will likely involve marking tasks done as work progresses and adjusting timelines as needed.
+- **Circle cancellation timing** — Brian is paying but eager to cancel. Confirm Teachable viability first (Phase 2).
+- **Email drip copy** — Strategy done, copy not written. Emails 2-5 still needed.
+- **Meta ad campaign timing** — Depends on Nico's final ads + email content ready
+- **Demand validation** — Email 4's "Want early access?" CTA is the go/no-go signal for building the course
+- **results@humbleconviction.com** — Nico pinged to set up routing for action plan email replies
